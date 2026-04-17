@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', 'PingFang TC', sans-serif; font-size: 12px; color: #1a1a1a; }
+
+  .page { width: 210mm; min-height: 297mm; padding: 18mm 18mm 15mm; page-break-after: always; position: relative; }
+  .page:last-child { page-break-after: auto; }
+
+  /* Header */
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 18px; }
+  .page-header h1 { font-size: 18px; font-weight: 900; color: #1e3a5f; letter-spacing: 0.05em; }
+  .page-header .page-tag { background: #1e3a5f; color: white; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+  .page-footer { position: absolute; bottom: 10mm; left: 18mm; right: 18mm; border-top: 1px solid #e5e7eb; padding-top: 5px; display: flex; justify-content: space-between; color: #9ca3af; font-size: 9px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  th { background: #1e3a5f; color: white; padding: 7px 9px; font-size: 11px; font-weight: 600; text-align: center; }
+  td { padding: 7px 9px; border-bottom: 1px solid #e5e7eb; font-size: 11px; vertical-align: middle; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .total-row td { background: #eff6ff !important; font-weight: 700; font-size: 12px; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+
+  /* Section titles */
+  .section-title { font-size: 11px; font-weight: 700; color: #1e3a5f; text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 6px; padding-left: 8px; border-left: 3px solid #3b82f6; }
+
+  /* Method boxes */
+  .method-box { border: 1px solid #dde3ef; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+  .method-header { background: #1e3a5f; color: white; padding: 6px 12px; font-size: 11px; font-weight: 700; }
+
+  /* Result */
+  .result-box { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; margin: 12px 0; }
+  .result-label { font-size: 12px; color: #374151; font-weight: 600; }
+  .result-amount { font-size: 22px; font-weight: 900; color: #1e3a5f; }
+
+  /* Two-column layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Info card for P1 */
+  .info-table td:first-child { font-weight: 600; color: #4b5563; width: 30%; background: #f1f5f9; }
+  .amount-highlight { font-size: 16px; font-weight: 800; color: #1e3a5f; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1: Payment Request ============ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>費用申請單</h1>
+      <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+    </div>
+    <span class="page-tag">第 1 頁 · 匯款申請</span>
+  </div>
+
+  <p style="font-size:11px;color:#374151;margin-bottom:12px;">
+    請依下列資訊辦理匯款，如有疑問請聯繫活動承辦人。
+  </p>
+
+  <table class="info-table">
+    <tr><td>請款日期</td><td>{{ manual.payment_date }}</td></tr>
+    <tr><td>匯款原因</td><td>{{ manual.event_name }} 經費結算</td></tr>
+    <tr><td>結算金額</td><td class="amount-highlight">NT$ {{ "{:,}".format(settlement.method1.total | int) }}</td></tr>
+    <tr><td>銀行名稱</td><td>{{ manual.bank_name }}</td></tr>
+    <tr><td>分行</td><td>{{ manual.bank_branch }}</td></tr>
+    <tr><td>帳號</td><td style="font-size:13px;font-weight:700;letter-spacing:0.05em;">{{ manual.bank_account }}</td></tr>
+    <tr><td>戶名</td><td style="font-weight:700;">{{ manual.bank_holder }}</td></tr>
+  </table>
+
+  <div style="margin-top:24px;padding:12px;background:#fefce8;border:1px solid #fde047;border-radius:6px;">
+    <p style="font-size:10px;color:#713f12;">
+      ⚠ 本申請單附件包含：經費結算明細（第2頁）、客戶確認截圖（第3頁）、報價單（第4頁）
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <span>{{ manual.event_name }}</span>
+    <span>製表日期：{{ manual.payment_date }}</span>
+    <span>1 / 2</span>
+  </div>
+</div>
+
+<!-- ============ PAGE 2: Settlement Detail ============ -->
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>經費結算明細</h1>
+      <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+    </div>
+    <span class="page-tag">第 2 頁 · 經費結算</span>
+  </div>
+
+  <!-- Registration breakdown -->
+  <div class="section-title">報名人數明細</div>
+  <table>
+    <thead><tr><th>組別</th><th>總人數</th><th>公關人數</th><th>計費人數</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>
+      {% for r in settlement.reg_breakdown %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td class="text-center">{{ r.count }}</td>
+        <td class="text-center">{{ r.pr }}</td>
+        <td class="text-center">{{ r.count - r.pr }}</td>
+        <td class="text-right">{{ r.price }}</td>
+        <td class="text-right">{{ "{:,}".format(r.total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td>合計</td>
+        <td class="text-center">{{ settlement.total_participants }}</td>
+        <td></td><td></td><td></td>
+        <td class="text-right">{{ "{:,}".format(settlement.method2.reg_fee | int) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- Add-ons -->
+  <div class="section-title">加價購明細</div>
+  <table>
+    <thead><tr><th>項目</th><th>數量</th><th>公關</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>
+      {% for a in settlement.addon_breakdown %}
+      <tr>
+        <td>{{ a.name }}</td>
+        <td class="text-center">{{ a.qty }}</td>
+        <td class="text-center">{{ a.pr }}</td>
+        <td class="text-right">{{ a.price }}</td>
+        <td class="text-right">{{ "{:,}".format(a.total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row"><td colspan="4" class="text-right">合計</td><td class="text-right">{{ "{:,}".format(settlement.method2.addon_fee | int) }}</td></tr>
+    </tfoot>
+  </table>
+
+  <!-- Timing -->
+  <div class="section-title">服務費明細</div>
+  <table>
+    <thead><tr><th>服務項目</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>
+      {% for t in settlement.timing_breakdown %}
+      <tr>
+        <td>{{ t.item }}</td>
+        <td class="text-center">{{ "{:,}".format(t.qty) }}</td>
+        <td class="text-right">{{ t.unit }}</td>
+        <td class="text-right">{{ "{:,}".format(t.subtotal) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="3" class="text-right" style="font-size:10px;color:#6b7280;">小計（未稅）</td><td class="text-right">{{ "{:,}".format(settlement.timing_subtotal | int) }}</td></tr>
+      <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.timing_total | int) }}</td></tr>
+    </tfoot>
+  </table>
+
+  <!-- Method 1 -->
+  <div class="section-title">方式一：實際收支結算</div>
+  <div class="method-box">
+    <div class="method-header">選手繳費扣除各項支出</div>
+    <table>
+      <thead><tr>
+        <th>選手繳費金額</th><th>ATM手續費</th><th>超商手續費</th>
+        <th>退費</th><th>晶片押金</th><th>服務費</th><th>結算金額</th>
+      </tr></thead>
+      <tbody><tr class="total-row">
+        <td class="text-right">{{ "{:,}".format(settlement.method1.actual_paid | int) }}</td>
+        <td class="text-right">({{ "{:,}".format((-settlement.method1.atm_fee) | int) }})</td>
+        <td class="text-right">({{ "{:,}".format((-settlement.method1.cvs_fee) | int) }})</td>
+        <td class="text-right">({{ "{:,}".format((-settlement.method1.refund) | int) }})</td>
+        <td class="text-right">({{ "{:,}".format((-settlement.method1.chip_deposit) | int) }})</td>
+        <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
+        <td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.method1.total | int) }}</td>
+      </tr></tbody>
+    </table>
+  </div>
+
+  <!-- Method 2 -->
+  <div class="section-title">方式二：費用明細結算</div>
+  <div class="method-box">
+    <div class="method-header">各項費用加總</div>
+    <table>
+      <thead><tr>
+        <th>選手報名費</th><th>加價購</th><th>郵寄費</th>
+        <th>溢繳金額</th><th>服務費</th><th>結算金額</th>
+      </tr></thead>
+      <tbody><tr class="total-row">
+        <td class="text-right">{{ "{:,}".format(settlement.method2.reg_fee | int) }}</td>
+        <td class="text-right">{{ "{:,}".format(settlement.method2.addon_fee | int) }}</td>
+        <td class="text-right">{{ "{:,}".format(settlement.method2.postal | int) }}</td>
+        <td class="text-right">{{ "{:,}".format(settlement.method2.overpaid | int) }}</td>
+        <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
+        <td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.method2.total | int) }}</td>
+      </tr></tbody>
+    </table>
+  </div>
+
+  <!-- Result -->
+  <div class="result-box">
+    <span class="result-label">本次結算金額</span>
+    <span class="result-amount">NT$ {{ "{:,}".format(settlement.method1.total | int) }}</span>
+  </div>
+
+  <div class="page-footer">
+    <span>{{ manual.event_name }}</span>
+    <span>製表日期：{{ manual.payment_date }}</span>
+    <span>2 / 2</span>
+  </div>
+</div>
+
+</body>
+</html>

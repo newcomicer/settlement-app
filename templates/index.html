@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>經費結算系統</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  body { font-family: 'Noto Sans TC','PingFang TC',sans-serif; }
+  .drop-active { border-color:#3b82f6!important; background:#eff6ff!important; }
+  .ni { width:100%; padding:4px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; }
+  .ni:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.2); }
+  .ni-r { text-align:right; }
+  .upload-zone { border:2px dashed #d1d5db; border-radius:10px; padding:20px; text-align:center; cursor:pointer; transition:all .2s; }
+  .upload-zone:hover { border-color:#3b82f6; background:#f0f9ff; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .preview-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .preview-table th { background:#1e3a5f; color:white; padding:6px 8px; text-align:center; }
+  .preview-table td { padding:5px 8px; border-bottom:1px solid #e5e7eb; }
+  .preview-table tr:nth-child(even) td { background:#f8fafc; }
+  .total-row td { background:#eff6ff!important; font-weight:700; }
+  .method-box { border:1px solid #dde3ef; border-radius:6px; overflow:hidden; margin-bottom:10px; }
+  .method-hdr { background:#1e3a5f; color:white; padding:6px 12px; font-size:11px; font-weight:700; }
+  .result-amount { font-size:22px; font-weight:900; color:#1e3a5f; }
+  .lbl { font-size:11px; color:#6b7280; display:block; margin-bottom:2px; }
+  .del-btn { color:#ef4444; cursor:pointer; padding:2px 4px; border-radius:4px; }
+  .del-btn:hover { background:#fee2e2; }
+  .add-btn { font-size:12px; color:#3b82f6; cursor:pointer; display:flex; align-items:center; gap:4px; padding:4px 0; }
+  .add-btn:hover { color:#1d4ed8; }
+  /* Accordion */
+  .acc-hdr { display:flex; align-items:center; justify-content:space-between;
+    background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;
+    padding:7px 10px; cursor:pointer; user-select:none; margin-bottom:2px; }
+  .acc-hdr:hover { background:#f0f9ff; border-color:#bfdbfe; }
+  .acc-hdr .acc-title { font-size:12px; font-weight:700; color:#374151; display:flex; align-items:center; gap:6px; }
+  .acc-hdr .acc-arrow { transition:transform .2s; color:#9ca3af; font-size:10px; }
+  .acc-hdr.open .acc-arrow { transform:rotate(180deg); }
+  .acc-body { overflow:hidden; transition:max-height .25s ease, opacity .2s; max-height:0; opacity:0; }
+  .acc-body.open { max-height:600px; opacity:1; }
+  .acc-body-inner { padding:8px 4px 4px; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Top bar -->
+<div class="bg-[#1e3a5f] text-white px-6 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <span class="text-lg font-bold">⚡ 經費結算系統</span>
+    <span class="badge bg-blue-400 text-white" id="status-badge">等待上傳</span>
+  </div>
+  <button id="btn-pdf" onclick="generatePDF()"
+    class="bg-white text-[#1e3a5f] font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center gap-2"
+    disabled>
+    <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF
+  </button>
+</div>
+
+<div class="flex h-[calc(100vh-52px)]">
+
+<!-- ═══ LEFT PANEL ═══ -->
+<div class="w-[340px] flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200 p-3 space-y-2">
+
+  <!-- Excel Upload -->
+  <div id="drop-zone" class="upload-zone" onclick="document.getElementById('excel-input').click()">
+    <div id="drop-text" style="pointer-events:none;">
+      <i data-lucide="file-spreadsheet" class="w-6 h-6 mx-auto text-gray-400 mb-1"></i>
+      <p class="text-sm text-gray-500">拖拉或點擊上傳 Excel</p>
+    </div>
+  </div>
+  <input type="file" id="excel-input" accept=".xlsx,.xls" class="hidden" onchange="uploadExcel(this.files[0])">
+
+  <!-- 基本資訊 -->
+  <div class="acc-hdr open" onclick="toggleAcc(this)">
+    <span class="acc-title">📋 基本資訊</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body open">
+    <div class="acc-body-inner space-y-2">
+      <div><span class="lbl">活動名稱</span><input type="text" id="event_name" class="ni" placeholder="活動名稱"></div>
+      <div><span class="lbl">請款日期</span><input type="date" id="payment_date" class="ni"></div>
+    </div>
+  </div>
+
+  <!-- 匯款帳戶 -->
+  <div class="acc-hdr open" onclick="toggleAcc(this)">
+    <span class="acc-title">🏦 匯款帳戶</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body open">
+    <div class="acc-body-inner space-y-2">
+      <div><span class="lbl">銀行名稱＋代號</span><input type="text" id="bank_name" class="ni" placeholder="合作金庫 006"></div>
+      <div><span class="lbl">分行名稱＋代號</span><input type="text" id="bank_branch" class="ni" placeholder="永安分行 1715"></div>
+      <div><span class="lbl">帳號</span><input type="text" id="bank_account" class="ni"></div>
+      <div><span class="lbl">戶名</span><input type="text" id="bank_holder" class="ni"></div>
+    </div>
+  </div>
+
+  <!-- 財務調整 -->
+  <div class="acc-hdr open" onclick="toggleAcc(this)">
+    <span class="acc-title">💰 財務調整</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body open">
+    <div class="acc-body-inner space-y-1">
+      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">ATM 手續費</span><input type="number" id="atm_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">超商手續費</span><input type="number" id="cvs_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">退費修正</span><input type="number" id="refund_extra" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">溢繳金額</span><input type="number" id="overpaid" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+    </div>
+  </div>
+
+  <!-- 報名組別 -->
+  <div class="acc-hdr open" onclick="toggleAcc(this)">
+    <span class="acc-title">🏅 報名組別費用</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body open">
+    <div class="acc-body-inner">
+      <div id="reg-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入</p></div>
+    </div>
+  </div>
+
+  <!-- 公關人數（移到加價購前面） -->
+  <div class="acc-hdr open" onclick="toggleAcc(this)">
+    <span class="acc-title">🎟 公關人數</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body open">
+    <div class="acc-body-inner">
+      <div id="pr-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入（可手動調整）</p></div>
+    </div>
+  </div>
+
+  <!-- 加價購（移到公關後面） -->
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <span class="acc-title">🛍 加價購單價與公關</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body">
+    <div class="acc-body-inner">
+      <div id="addon-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入</p></div>
+    </div>
+  </div>
+
+  <!-- 服務費 -->
+  <div class="acc-hdr" onclick="toggleAcc(this)">
+    <span class="acc-title">⏱ 服務費項目</span>
+    <span class="acc-arrow">▼</span>
+  </div>
+  <div class="acc-body">
+    <div class="acc-body-inner">
+      <div id="timing-items" class="space-y-1 mb-1"></div>
+      <div class="add-btn" onclick="addTimingItem()">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> 新增項目
+      </div>
+    </div>
+  </div>
+
+
+</div><!-- end left -->
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<div class="flex-1 overflow-y-auto p-5 bg-gray-50">
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div id="placeholder" class="flex flex-col items-center justify-center h-64 text-gray-300">
+    <i data-lucide="file-text" class="w-14 h-14 mb-3"></i>
+    <p class="text-lg">上傳 Excel 後自動顯示結算預覽</p>
+  </div>
+
+  <div id="preview" class="hidden space-y-4">
+
+    <!-- P1 -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="badge bg-[#1e3a5f] text-white">第1頁</span>
+        <h2 class="font-bold text-gray-700 text-sm">匯款申請表</h2>
+      </div>
+      <table class="preview-table">
+        <thead><tr><th>請款日期</th><th>匯款原因</th><th>金額</th><th>銀行</th><th>分行</th><th>帳號</th><th>戶名</th></tr></thead>
+        <tbody><tr>
+          <td id="p1_date" class="text-center">—</td>
+          <td id="p1_reason">—</td>
+          <td id="p1_amount" class="text-right font-bold text-blue-800">—</td>
+          <td id="p1_bank">—</td>
+          <td id="p1_branch">—</td>
+          <td id="p1_account">—</td>
+          <td id="p1_holder">—</td>
+        </tr></tbody>
+      </table>
+    </div>
+
+    <!-- P2 -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="badge bg-emerald-600 text-white">第2頁</span>
+        <h2 class="font-bold text-gray-700 text-sm">經費結算明細</h2>
+      </div>
+
+      <!-- Reg breakdown -->
+      <p class="text-xs font-bold text-gray-500 mb-1">報名人數明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>組別</th><th>總人數</th><th>公關</th><th>計費人數</th><th>單價</th><th>小計</th></tr></thead>
+        <tbody id="reg-tbody"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td>合計</td>
+            <td id="reg_count" class="text-center">—</td>
+            <td></td><td></td><td></td>
+            <td id="reg_fee_ttl" class="text-right">—</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Addon breakdown -->
+      <p class="text-xs font-bold text-gray-500 mb-1">加價購明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>項目</th><th>數量</th><th>公關</th><th>計費</th><th>單價</th><th>小計</th></tr></thead>
+        <tbody id="addon-tbody"></tbody>
+        <tfoot>
+          <tr class="total-row"><td colspan="5" class="text-right">合計</td><td id="addon_ttl" class="text-right">—</td></tr>
+        </tfoot>
+      </table>
+
+      <!-- Timing -->
+      <p class="text-xs font-bold text-gray-500 mb-1">服務費明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>項目</th><th>數量／基數</th><th>單價／費率</th><th>小計</th></tr></thead>
+        <tbody id="timing-tbody"></tbody>
+        <tfoot>
+          <tr><td colspan="3" class="text-right text-xs text-gray-400">小計（未稅）</td><td id="timing_sub" class="text-right font-semibold">—</td></tr>
+          <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td id="timing_ttl" class="text-right text-blue-800">—</td></tr>
+        </tfoot>
+      </table>
+
+      <!-- Method 1 -->
+      <div class="method-box mb-3">
+        <div class="method-hdr">方式一：實際收支結算</div>
+        <table class="preview-table">
+          <thead><tr><th>選手繳費</th><th>ATM手續費</th><th>超商手續費</th><th>退費</th><th>晶片押金</th><th>服務費</th><th>結算金額</th></tr></thead>
+          <tbody><tr class="total-row">
+            <td id="m1_paid" class="text-right">—</td>
+            <td id="m1_atm" class="text-right">—</td>
+            <td id="m1_cvs" class="text-right">—</td>
+            <td id="m1_refund" class="text-right">—</td>
+            <td id="m1_chip" class="text-right">—</td>
+            <td id="m1_timing" class="text-right">—</td>
+            <td id="m1_total" class="text-right text-blue-800">—</td>
+          </tr></tbody>
+        </table>
+      </div>
+
+      <!-- Method 2 -->
+      <div class="method-box mb-4">
+        <div class="method-hdr">方式二：費用明細結算</div>
+        <table class="preview-table">
+          <thead><tr><th>選手報名費</th><th>加價購</th><th>郵寄費</th><th>溢繳金額</th><th>服務費</th><th>結算金額</th></tr></thead>
+          <tbody><tr class="total-row">
+            <td id="m2_reg" class="text-right">—</td>
+            <td id="m2_addon" class="text-right">—</td>
+            <td id="m2_postal" class="text-right">—</td>
+            <td id="m2_overpaid" class="text-right">—</td>
+            <td id="m2_timing" class="text-right">—</td>
+            <td id="m2_total" class="text-right text-blue-800">—</td>
+          </tr></tbody>
+        </table>
+      </div>
+
+      <!-- Result -->
+      <div class="flex items-center justify-end gap-4 bg-blue-50 rounded-lg p-3">
+        <span class="text-sm text-gray-600 font-semibold">本次結算金額</span>
+        <span class="result-amount" id="result_amount">NT$ —</span>
+      </div>
+    </div>
+
+  </div><!-- end preview -->
+</div>
+</div><!-- end right -->
+</div>
+
+<script>
+// ── State ──
+const state = {
+  registration: {}, pr_counts: {}, addons: {},
+  financials: {},
+  timingItemId: 0,
+};
+
+lucide.createIcons();
+
+// ── Drag & Drop ──
+let dragCount = 0;
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragenter', e => { e.preventDefault(); dragCount++; dz.classList.add('drop-active'); });
+dz.addEventListener('dragleave', e => { e.preventDefault(); if(--dragCount===0) dz.classList.remove('drop-active'); });
+dz.addEventListener('dragover',  e => e.preventDefault());
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dragCount=0; dz.classList.remove('drop-active');
+  const f = e.dataTransfer.files[0]; if(f) uploadExcel(f);
+});
+
+// ── Helpers ──
+const fmt = n => (n===null||n===undefined) ? '—' : Number(n).toLocaleString('zh-TW');
+const fmtS = n => { const v=Number(n); return v<0 ? `(${fmt(-v)})` : fmt(v); };
+
+// ── Excel Upload ──
+async function uploadExcel(file) {
+  if (!file?.name.match(/\.xlsx?$/i)) { alert('請上傳 .xlsx 或 .xls 格式'); return; }
+  const dt = document.getElementById('drop-text');
+  dt.innerHTML = '<p class="text-sm text-blue-600 font-semibold">解析中，請稍候...</p>';
+  let data;
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch('/parse-excel', { method:'POST', body:fd });
+    const text = await res.text();
+    try { data = JSON.parse(text); }
+    catch { dt.innerHTML='<p class="text-sm text-red-500">❌ 伺服器錯誤，請看 terminal</p>'; return; }
+  } catch { dt.innerHTML='<p class="text-sm text-red-500">連線錯誤，請確認系統是否已啟動</p>'; return; }
+
+  if (data.error) { dt.innerHTML=`<p class="text-sm text-red-500">❌ ${data.error}</p>`; return; }
+
+  state.registration      = data.registration      || {};
+  state.pr_counts         = data.pr_counts         || {};
+  state.addons            = data.addons            || {};
+  state.financials        = data.financials        || {};
+  state.reg_prices_auto   = data.reg_prices_auto   || {};
+  state.addon_prices_auto = data.addon_prices_auto || {};
+  state.addon_pr_auto     = data.addon_pr_auto     || {};
+
+  // Auto-fill financial fields
+  document.getElementById('atm_fee').value = data.financials?.atm_fee || 0;
+  document.getElementById('cvs_fee').value = data.financials?.cvs_fee || 0;
+
+  renderDynamicFields();
+
+  dt.innerHTML = `<p class="text-sm text-green-600 font-semibold">✅ ${file.name}</p><p class="text-xs text-gray-400">點擊重新上傳</p>`;
+  document.getElementById('status-badge').textContent = '資料已載入';
+  document.getElementById('status-badge').className = 'badge bg-green-500 text-white';
+  document.getElementById('placeholder').classList.add('hidden');
+  document.getElementById('preview').classList.remove('hidden');
+  document.getElementById('btn-pdf').disabled = false;
+  recalculate();
+}
+
+// ── Render dynamic fields ──
+function renderDynamicFields() {
+  const reg = state.registration;
+  const pr  = state.pr_counts;
+  const addons = state.addons;
+
+  // Registration groups（自動帶入推算單價）
+  const regEl = document.getElementById('reg-groups');
+  regEl.innerHTML = Object.keys(reg).map(k => {
+    const autoPrice = state.reg_prices_auto[k] || 0;
+    return `
+    <div class="flex gap-1 items-center text-xs">
+      <span class="flex-1 truncate text-gray-700 font-medium" title="${k}">${k}</span>
+      <span class="text-gray-400 w-12 text-right">${fmt(reg[k])}人</span>
+      <input type="number" id="rp_${eid(k)}" class="ni ni-r w-20" value="${autoPrice}"
+        placeholder="單價" oninput="recalculate()" title="${k} 單價">
+    </div>`;
+  }).join('');
+
+  // Add-ons（自動帶入推算單價與公關數量）
+  const addonEl = document.getElementById('addon-groups');
+  if (Object.keys(addons).length === 0) {
+    addonEl.innerHTML = '<p class="text-xs text-gray-400">此活動無加價購項目</p>';
+  } else {
+    addonEl.innerHTML = Object.keys(addons).map(k => {
+      const autoPrice = state.addon_prices_auto[k] || 0;
+      const autoPr    = state.addon_pr_auto[k]     || 0;
+      return `
+      <div class="space-y-0.5 pb-1 border-b border-gray-100">
+        <div class="flex gap-1 items-center text-xs">
+          <span class="flex-1 truncate text-gray-700 font-medium" title="${k}">${k}</span>
+          <span class="text-gray-400 w-10 text-right text-xs">${fmt(addons[k])}件</span>
+        </div>
+        <div class="flex gap-1 items-center text-xs">
+          <span class="text-gray-400 w-10 text-right">單價</span>
+          <input type="number" id="ap_${eid(k)}" class="ni ni-r flex-1" value="${autoPrice}"
+            placeholder="單價" oninput="recalculate()">
+          <span class="text-gray-400 w-10 text-right">公關</span>
+          <input type="number" id="apr_${eid(k)}" class="ni ni-r w-16" value="${autoPr}"
+            placeholder="0" oninput="recalculate()">
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // PR counts
+  const prEl = document.getElementById('pr-groups');
+  prEl.innerHTML = Object.keys(reg).map(k => `
+    <div class="flex gap-1 items-center text-xs">
+      <span class="flex-1 truncate text-gray-700" title="${k}">${k}</span>
+      <input type="number" id="pr_${eid(k)}" class="ni ni-r w-20" value="${pr[k]||0}"
+        oninput="recalculate()" title="${k} 公關人數">
+    </div>`).join('');
+
+  lucide.createIcons();
+}
+
+function eid(name) { return name.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_'); }
+
+// ── Timing items ──
+function addTimingItem(name='', qty='', unit='', isPct=false) {
+  const id = ++state.timingItemId;
+  const el = document.createElement('div');
+  el.id = `ti_${id}`;
+  el.className = 'bg-gray-50 rounded-lg p-2 space-y-1';
+  el.innerHTML = `
+    <div class="flex gap-1 items-center">
+      <input type="text" placeholder="項目名稱" value="${name}"
+        class="ni flex-1 text-xs" id="ti_name_${id}" oninput="recalculate()">
+      <span class="del-btn" onclick="document.getElementById('ti_${id}').remove();recalculate()">✕</span>
+    </div>
+    <div class="flex gap-1 items-center">
+      <select id="ti_type_${id}" class="ni text-xs w-24" onchange="togglePctQty(${id});recalculate()">
+        <option value="fixed" ${!isPct?'selected':''}>固定費用</option>
+        <option value="percent" ${isPct?'selected':''}>百分比(%)</option>
+      </select>
+      <input type="number" id="ti_qty_${id}" placeholder="數量" value="${qty}"
+        class="ni ni-r flex-1 text-xs ${isPct?'hidden':''}" oninput="recalculate()">
+      <input type="number" id="ti_unit_${id}" placeholder="${isPct?'費率(%)':'單價'}" value="${unit}"
+        class="ni ni-r flex-1 text-xs" oninput="recalculate()">
+    </div>`;
+  document.getElementById('timing-items').appendChild(el);
+  lucide.createIcons();
+}
+
+function togglePctQty(id) {
+  const isPct = document.getElementById(`ti_type_${id}`).value === 'percent';
+  document.getElementById(`ti_qty_${id}`).classList.toggle('hidden', isPct);
+  document.getElementById(`ti_unit_${id}`).placeholder = isPct ? '費率(%)' : '單價';
+}
+
+function getTimingItems() {
+  const items = [];
+  document.querySelectorAll('[id^="ti_name_"]').forEach(el => {
+    const id = el.id.replace('ti_name_', '');
+    const isPct = document.getElementById(`ti_type_${id}`)?.value === 'percent';
+    items.push({
+      name:       el.value,
+      qty:        parseFloat(document.getElementById(`ti_name_${id}`)?.parentElement?.parentElement?.querySelector(`#ti_qty_${id}`)?.value) || 0,
+      unit:       parseFloat(document.getElementById(`ti_unit_${id}`)?.value) || 0,
+      is_percent: isPct,
+    });
+  });
+  return items;
+}
+
+// ── Get all manual values ──
+function getManual() {
+  const reg = state.registration;
+  const addons = state.addons;
+  const reg_prices = {}, pr_overrides = {}, addon_prices = {};
+  Object.keys(reg).forEach(k => {
+    reg_prices[k]   = parseFloat(document.getElementById(`rp_${eid(k)}`)?.value) || 0;
+    pr_overrides[k] = parseInt(document.getElementById(`pr_${eid(k)}`)?.value)   || 0;
+  });
+  const addon_pr = {};
+  Object.keys(addons).forEach(k => {
+    addon_prices[k] = parseFloat(document.getElementById(`ap_${eid(k)}`)?.value)  || 0;
+    addon_pr[k]     = parseInt(document.getElementById(`apr_${eid(k)}`)?.value)    || 0;
+  });
+
+  // Re-parse timing items with correct qty
+  const timing_items = [];
+  document.querySelectorAll('[id^="ti_name_"]').forEach(el => {
+    const id = el.id.replace('ti_name_', '');
+    const isPct = document.getElementById(`ti_type_${id}`)?.value === 'percent';
+    timing_items.push({
+      name:       el.value,
+      qty:        parseFloat(document.getElementById(`ti_qty_${id}`)?.value) || 0,
+      unit:       parseFloat(document.getElementById(`ti_unit_${id}`)?.value) || 0,
+      is_percent: isPct,
+    });
+  });
+
+  return {
+    event_name:   document.getElementById('event_name').value,
+    payment_date: document.getElementById('payment_date').value,
+    bank_name:    document.getElementById('bank_name').value,
+    bank_branch:  document.getElementById('bank_branch').value,
+    bank_account: document.getElementById('bank_account').value,
+    bank_holder:  document.getElementById('bank_holder').value,
+    atm_fee:      parseFloat(document.getElementById('atm_fee').value)    || 0,
+    cvs_fee:      parseFloat(document.getElementById('cvs_fee').value)    || 0,
+    refund_extra: parseFloat(document.getElementById('refund_extra').value)|| 0,
+    overpaid:     parseFloat(document.getElementById('overpaid').value)   || 0,
+    reg_prices, pr_overrides, addon_prices, addon_pr, timing_items,
+  };
+}
+
+// ── Recalculate (client-side) ──
+function recalculate() {
+  if (!Object.keys(state.registration).length) return;
+  const reg    = state.registration;
+  const addons = state.addons;
+  const fin    = state.financials;
+  const m      = getManual();
+  const pr     = m.pr_overrides;
+
+  // Reg fee
+  let regFee = 0;
+  const regRows = [];
+  let totalCount = 0;
+  for (const k of Object.keys(reg)) {
+    const fee = (reg[k] - (pr[k]||0)) * (m.reg_prices[k]||0);
+    regFee += fee; totalCount += reg[k];
+    regRows.push({ name:k, count:reg[k], pr:pr[k]||0, price:m.reg_prices[k]||0, total:fee });
+  }
+
+  // Addon fee
+  let addonFee = 0;
+  const addonRows = [];
+  for (const k of Object.keys(addons)) {
+    const qty   = addons[k] || 0;
+    const pr    = m.addon_pr[k] || 0;
+    const total = (qty - pr) * (m.addon_prices[k]||0);
+    addonFee += total;
+    addonRows.push({ name:k, qty, pr, price:m.addon_prices[k]||0, total });
+  }
+
+  // Timing（全部由使用者自訂，不預設任何項目）
+  let timingSub = 0;
+  const timingRows = [];
+  for (const ti of m.timing_items) {
+    const sub = ti.is_percent ? Math.round(timingSub * ti.unit/100) : Math.round(ti.qty * ti.unit);
+    timingRows.push({ item:ti.name, qty:ti.qty, unit:ti.unit, sub, isPct:ti.is_percent });
+    timingSub += sub;
+  }
+  const timingTotal = Math.round(timingSub * 1.05);
+
+  // Method 1
+  const m1_atm   = -m.atm_fee;
+  const m1_cvs   = -m.cvs_fee;
+  const m1_refund= -((fin.refund_fee||0)+(fin.downgrade||0)+m.refund_extra);
+  const m1_chip  = -(fin.chip_deposit||0);
+  const m1_total = (fin.actual_paid||0)+m1_atm+m1_cvs+m1_refund+m1_chip-timingTotal;
+
+  // Method 2
+  const m2_total = regFee+addonFee+(fin.postal||0)+m.overpaid-timingTotal;
+
+  // Update P1
+  const d = m.payment_date ? new Date(m.payment_date+' 12:00').toLocaleDateString('zh-TW') : '—';
+  document.getElementById('p1_date').textContent   = d;
+  document.getElementById('p1_reason').textContent = (m.event_name||'—')+' 經費結算';
+  document.getElementById('p1_amount').textContent = fmt(m1_total);
+  document.getElementById('p1_bank').textContent   = m.bank_name   || '—';
+  document.getElementById('p1_branch').textContent = m.bank_branch || '—';
+  document.getElementById('p1_account').textContent= m.bank_account|| '—';
+  document.getElementById('p1_holder').textContent = m.bank_holder || '—';
+
+  // Method 1
+  document.getElementById('m1_paid').textContent   = fmt(fin.actual_paid||0);
+  document.getElementById('m1_atm').textContent    = fmtS(m1_atm);
+  document.getElementById('m1_cvs').textContent    = fmtS(m1_cvs);
+  document.getElementById('m1_refund').textContent = fmtS(m1_refund);
+  document.getElementById('m1_chip').textContent   = fmtS(m1_chip);
+  document.getElementById('m1_timing').textContent = fmtS(-timingTotal);
+  document.getElementById('m1_total').textContent  = fmt(m1_total);
+
+  // Method 2
+  document.getElementById('m2_reg').textContent    = fmt(regFee);
+  document.getElementById('m2_addon').textContent  = fmt(addonFee);
+  document.getElementById('m2_postal').textContent = fmt(fin.postal||0);
+  document.getElementById('m2_overpaid').textContent = fmt(m.overpaid);
+  document.getElementById('m2_timing').textContent = fmtS(-timingTotal);
+  document.getElementById('m2_total').textContent  = fmt(m2_total);
+  document.getElementById('result_amount').textContent = `NT$ ${fmt(m1_total)}`;
+
+  // Timing table
+  document.getElementById('timing-tbody').innerHTML = timingRows.map(t =>
+    `<tr><td>${t.item}</td>
+     <td class="text-center">${t.isPct ? t.unit+'%' : fmt(t.qty)}</td>
+     <td class="text-right">${t.isPct ? '（按前項小計）' : fmt(t.unit)}</td>
+     <td class="text-right">${fmt(t.sub)}</td></tr>`).join('');
+  document.getElementById('timing_sub').textContent = fmt(timingSub);
+  document.getElementById('timing_ttl').textContent = fmt(timingTotal);
+
+  // Reg table
+  document.getElementById('reg-tbody').innerHTML = regRows.map(r =>
+    `<tr><td>${r.name}</td>
+     <td class="text-center">${fmt(r.count)}</td>
+     <td class="text-center">${fmt(r.pr)}</td>
+     <td class="text-center">${fmt(r.count-r.pr)}</td>
+     <td class="text-right">${fmt(r.price)}</td>
+     <td class="text-right">${fmt(r.total)}</td></tr>`).join('');
+  document.getElementById('reg_count').textContent   = fmt(totalCount);
+  document.getElementById('reg_fee_ttl').textContent = fmt(regFee);
+
+  // Addon table
+  document.getElementById('addon-tbody').innerHTML = addonRows.map(a =>
+    `<tr><td>${a.name}</td>
+     <td class="text-center">${fmt(a.qty)}</td>
+     <td class="text-center">${fmt(a.pr)}</td>
+     <td class="text-center">${fmt(a.qty-a.pr)}</td>
+     <td class="text-right">${fmt(a.price)}</td>
+     <td class="text-right">${fmt(a.total)}</td></tr>`).join('');
+  document.getElementById('addon_ttl').textContent = fmt(addonFee);
+}
+
+// ── Generate PDF ──
+async function generatePDF() {
+  const btn = document.getElementById('btn-pdf');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin inline mr-1"></i> 產生中...';
+  lucide.createIcons();
+
+  const manual = getManual();
+  const payload = {
+    registration: state.registration,
+    pr_overrides: manual.pr_overrides,
+    addons:       state.addons,
+    addon_pr:     {},
+    financials:   state.financials,
+    manual,
+  };
+
+  const res = await fetch('/generate-pdf', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  });
+  if (res.ok) {
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `費用申請_${manual.event_name||'活動'}.pdf`;
+    a.click();
+  } else {
+    const e = await res.json().catch(()=>({}));
+    alert('PDF 產生失敗：'+(e.error||'未知錯誤'));
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i data-lucide="download" class="w-4 h-4 inline mr-1"></i> 匯出 PDF';
+  lucide.createIcons();
+}
+
+// ── Accordion ──
+function toggleAcc(hdr) {
+  const body = hdr.nextElementSibling;
+  const isOpen = hdr.classList.contains('open');
+  hdr.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+}
+
+// ── Init ──
+document.getElementById('payment_date').value = new Date().toISOString().slice(0,10);
+['event_name','payment_date','bank_name','bank_branch','bank_account','bank_holder'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalculate));
+['atm_fee','cvs_fee','refund_extra','overpaid'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalculate));
+</script>
+</body>
+</html>
