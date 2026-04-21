@@ -300,13 +300,17 @@
         </tr></tbody>
       </table>
       <p class="text-xs text-gray-400 mt-1.5">承辦人：<span id="p1_contact" class="text-gray-600">—</span></p>
+      <p class="text-xs text-gray-400 mt-0.5">📄 資料來源：<span id="p1_excel" class="font-mono text-gray-500">—</span></p>
     </div>
 
     <!-- P2 -->
     <div class="bg-white rounded-xl shadow-sm p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="badge bg-[#828282] text-white">第2頁</span>
-        <h2 class="font-bold text-gray-700 text-sm">經費結算明細</h2>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="badge bg-[#828282] text-white">第2頁</span>
+          <h2 class="font-bold text-gray-700 text-sm">經費結算明細</h2>
+        </div>
+        <p class="text-xs text-gray-400">📄 <span id="p2_excel" class="font-mono">—</span></p>
       </div>
 
       <!-- Reg breakdown -->
@@ -435,6 +439,7 @@ const state = {
   financials: {},
   timingItemId: 0,
   prevItemId: 0,
+  excelFilename: '',
   regOrder: [],
   addonOrder: [],
 };
@@ -515,6 +520,7 @@ async function uploadExcel(file) {
     dateEl.value = new Date().toISOString().slice(0, 10);
   }
 
+  state.excelFilename     = file.name;
   state.registration      = data.registration      || {};
   state.pr_counts         = data.pr_counts         || {};
   state.addons            = data.addons            || {};
@@ -781,6 +787,7 @@ function getManual() {
     credit_card_fee:  parseFloat(document.getElementById('credit_card_fee').value)  || 0,
     pr_chip_deposit:  parseFloat(document.getElementById('pr_chip_deposit').value)  || 0,
     prev_settlements: getPrevSettlements(),
+    excel_filename: state.excelFilename || '',
     reg_prices, pr_overrides, addon_prices, addon_pr, timing_items,
   };
 }
@@ -874,6 +881,9 @@ function recalculate() {
   document.getElementById('p1_holder').textContent  = m.bank_holder || '—';
   const contactStr = [m.contact_name, m.contact_info].filter(Boolean).join(' ｜ ');
   document.getElementById('p1_contact').textContent = contactStr || '—';
+  const fn = state.excelFilename || '—';
+  document.getElementById('p1_excel').textContent = fn;
+  document.getElementById('p2_excel').textContent = fn;
 
   // Method 1
   document.getElementById('m1_paid').textContent   = fmt(fin.actual_paid||0);

@@ -68,9 +68,12 @@
     <span class="page-tag">第 1 頁 · 匯款申請</span>
   </div>
 
-  <p style="font-size:11px;color:#374151;margin-bottom:12px;">
+  <p style="font-size:11px;color:#374151;margin-bottom:4px;">
     請依下列資訊辦理匯款，如有疑問請聯繫業務承辦人。
   </p>
+  {% if manual.excel_filename %}
+  <p style="font-size:9px;color:#9ca3af;margin-bottom:10px;">📄 資料來源：{{ manual.excel_filename }}</p>
+  {% endif %}
 
   <table class="info-table">
     <tr><td>請款日期</td><td>{{ manual.payment_date }}</td></tr>
@@ -83,6 +86,9 @@
     {% if manual.contact_name or manual.contact_info %}
     <tr><td>承辦人</td><td>{{ manual.contact_name }}</td></tr>
     <tr><td>聯絡方式</td><td>{{ manual.contact_info }}</td></tr>
+    {% endif %}
+    {% if manual.excel_filename %}
+    <tr><td>資料來源</td><td style="font-family:monospace;font-size:10px;color:#6b7280;">{{ manual.excel_filename }}</td></tr>
     {% endif %}
   </table>
 
@@ -114,6 +120,9 @@
     </div>
     <span class="page-tag">第 2 頁 · 經費結算</span>
   </div>
+  {% if manual.excel_filename %}
+  <p style="font-size:9px;color:#9ca3af;margin-bottom:10px;">📄 資料來源：{{ manual.excel_filename }}</p>
+  {% endif %}
 
   <!-- Registration breakdown -->
   <div class="section-title">報名人數明細</div>
