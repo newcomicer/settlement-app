@@ -407,7 +407,7 @@ dz.addEventListener('drop', e => {
 
 // ── Helpers ──
 const fmt = n => (n===null||n===undefined) ? '—' : Number(n).toLocaleString('zh-TW');
-const fmtS = n => { const v=Number(n); return v<0 ? `(${fmt(-v)})` : fmt(v); };
+const fmtS = n => { const v=Number(n); return v<0 ? `<span class="text-red-500">-${fmt(-v)}</span>` : fmt(v); };
 
 // ── Toast notifications ──
 function showToast(msg, type='error', duration=0) {
@@ -789,11 +789,11 @@ function recalculate() {
 
   // Method 1
   document.getElementById('m1_paid').textContent   = fmt(fin.actual_paid||0);
-  document.getElementById('m1_atm').textContent    = fmtS(m1_atm);
-  document.getElementById('m1_cvs').textContent    = fmtS(m1_cvs);
-  document.getElementById('m1_refund').textContent = fmtS(m1_refund);
-  document.getElementById('m1_chip').textContent   = fmtS(m1_chip);
-  document.getElementById('m1_timing').textContent = fmtS(-timingTotal);
+  document.getElementById('m1_atm').innerHTML    = fmtS(m1_atm);
+  document.getElementById('m1_cvs').innerHTML    = fmtS(m1_cvs);
+  document.getElementById('m1_refund').innerHTML = fmtS(m1_refund);
+  document.getElementById('m1_chip').innerHTML   = fmtS(m1_chip);
+  document.getElementById('m1_timing').innerHTML = fmtS(-timingTotal);
   document.getElementById('m1_total').textContent  = fmt(m1_total);
 
   // Method 2
@@ -801,7 +801,7 @@ function recalculate() {
   document.getElementById('m2_addon').textContent  = fmt(addonFee);
   document.getElementById('m2_postal').textContent = fmt(fin.postal||0);
   document.getElementById('m2_overpaid').textContent = fmt(m.overpaid);
-  document.getElementById('m2_timing').textContent = fmtS(-timingTotal);
+  document.getElementById('m2_timing').innerHTML = fmtS(-timingTotal);
   document.getElementById('m2_total').textContent  = fmt(m2_total);
   document.getElementById('result_amount').textContent = `NT$ ${fmt(m1_total)}`;
 
