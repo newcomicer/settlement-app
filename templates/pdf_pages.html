@@ -11,14 +11,14 @@
   .page:last-child { page-break-after: auto; }
 
   /* Header */
-  .page-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 18px; }
-  .page-header h1 { font-size: 18px; font-weight: 900; color: #1e3a5f; letter-spacing: 0.05em; }
-  .page-header .page-tag { background: #1e3a5f; color: white; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #003CAA; padding-bottom: 10px; margin-bottom: 18px; }
+  .page-header h1 { font-size: 18px; font-weight: 900; color: #003CAA; letter-spacing: 0.05em; }
+  .page-header .page-tag { background: #003CAA; color: white; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
   .page-footer { position: absolute; bottom: 10mm; left: 18mm; right: 18mm; border-top: 1px solid #e5e7eb; padding-top: 5px; display: flex; justify-content: space-between; color: #9ca3af; font-size: 9px; }
 
   /* Tables */
   table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-  th { background: #1e3a5f; color: white; padding: 7px 9px; font-size: 11px; font-weight: 600; text-align: center; }
+  th { background: #003CAA; color: white; padding: 7px 9px; font-size: 11px; font-weight: 600; text-align: center; }
   td { padding: 7px 9px; border-bottom: 1px solid #e5e7eb; font-size: 11px; vertical-align: middle; }
   tr:nth-child(even) td { background: #f8fafc; }
   .total-row td { background: #eff6ff !important; font-weight: 700; font-size: 12px; }
@@ -26,23 +26,23 @@
   .text-center { text-align: center; }
 
   /* Section titles */
-  .section-title { font-size: 11px; font-weight: 700; color: #1e3a5f; text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 6px; padding-left: 8px; border-left: 3px solid #3b82f6; }
+  .section-title { font-size: 11px; font-weight: 700; color: #003CAA; text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 6px; padding-left: 8px; border-left: 3px solid #3b82f6; }
 
   /* Method boxes */
   .method-box { border: 1px solid #dde3ef; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
-  .method-header { background: #1e3a5f; color: white; padding: 6px 12px; font-size: 11px; font-weight: 700; }
+  .method-header { background: #003CAA; color: white; padding: 6px 12px; font-size: 11px; font-weight: 700; }
 
   /* Result */
   .result-box { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; margin: 12px 0; }
   .result-label { font-size: 12px; color: #374151; font-weight: 600; }
-  .result-amount { font-size: 22px; font-weight: 900; color: #1e3a5f; }
+  .result-amount { font-size: 22px; font-weight: 900; color: #003CAA; }
 
   /* Two-column layout */
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   /* Info card for P1 */
   .info-table td:first-child { font-weight: 600; color: #4b5563; width: 30%; background: #f1f5f9; }
-  .amount-highlight { font-size: 16px; font-weight: 800; color: #1e3a5f; }
+  .amount-highlight { font-size: 16px; font-weight: 800; color: #003CAA; }
 </style>
 </head>
 <body>
@@ -50,9 +50,15 @@
 <!-- ============ PAGE 1: Payment Request ============ -->
 <div class="page">
   <div class="page-header">
-    <div>
-      <h1>費用申請單</h1>
-      <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <rect width="28" height="28" rx="4" fill="#003CAA"/>
+        <path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="white"/>
+      </svg>
+      <div>
+        <h1>費用申請單</h1>
+        <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+      </div>
     </div>
     <span class="page-tag">第 1 頁 · 匯款申請</span>
   </div>
@@ -87,9 +93,15 @@
 <!-- ============ PAGE 2: Settlement Detail ============ -->
 <div class="page">
   <div class="page-header">
-    <div>
-      <h1>經費結算明細</h1>
-      <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <rect width="28" height="28" rx="4" fill="#003CAA"/>
+        <path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="white"/>
+      </svg>
+      <div>
+        <h1>經費結算明細</h1>
+        <p style="font-size:11px;color:#6b7280;margin-top:3px;">{{ manual.event_name }}</p>
+      </div>
     </div>
     <span class="page-tag">第 2 頁 · 經費結算</span>
   </div>
@@ -156,7 +168,7 @@
     </tbody>
     <tfoot>
       <tr><td colspan="3" class="text-right" style="font-size:10px;color:#6b7280;">小計（未稅）</td><td class="text-right">{{ "{:,}".format(settlement.timing_subtotal | int) }}</td></tr>
-      <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.timing_total | int) }}</td></tr>
+      <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.timing_total | int) }}</td></tr>
     </tfoot>
   </table>
 
@@ -176,7 +188,7 @@
         <td class="text-right">({{ "{:,}".format((-settlement.method1.refund) | int) }})</td>
         <td class="text-right">({{ "{:,}".format((-settlement.method1.chip_deposit) | int) }})</td>
         <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
-        <td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.method1.total | int) }}</td>
+        <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method1.total | int) }}</td>
       </tr></tbody>
     </table>
   </div>
@@ -196,7 +208,7 @@
         <td class="text-right">{{ "{:,}".format(settlement.method2.postal | int) }}</td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.overpaid | int) }}</td>
         <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
-        <td class="text-right" style="color:#1e3a5f;">{{ "{:,}".format(settlement.method2.total | int) }}</td>
+        <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method2.total | int) }}</td>
       </tr></tbody>
     </table>
   </div>
