@@ -317,7 +317,7 @@ def calculate_settlement(data):
     cvs_fee  = -manual.get('cvs_fee', 0)
     refund   = -(fin.get('refund_fee', 0) + fin.get('downgrade', 0) + manual.get('refund_extra', 0))
     chip     = -fin.get('chip_deposit', 0)
-    method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - timing_total - prev_total
+    method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - credit_card_fee - timing_total - prev_total
 
     # 方式二
     method2_total = reg_fee + addon_fee + fin.get('postal', 0) + manual.get('overpaid', 0) - credit_card_fee - timing_total - prev_total
@@ -356,17 +356,18 @@ def calculate_settlement(data):
             'cvs_fee':      cvs_fee,
             'refund':       refund,
             'chip_deposit': chip,
+            'cc_fee':       credit_card_fee,
             'prev_total':   prev_total,
             'total':        method1_total,
         },
         'method2': {
-            'reg_fee':   reg_fee,
-            'addon_fee': addon_fee,
-            'postal':    fin.get('postal', 0),
-            'overpaid':  manual.get('overpaid', 0),
-            'cc_fee':    credit_card_fee,
+            'reg_fee':    reg_fee,
+            'addon_fee':  addon_fee,
+            'postal':     fin.get('postal', 0),
+            'overpaid':   manual.get('overpaid', 0),
+            'cc_fee':     credit_card_fee,
             'prev_total': prev_total,
-            'total':     method2_total,
+            'total':      method2_total,
         },
         'timing_breakdown': timing_breakdown,
         'timing_subtotal':  timing_subtotal,

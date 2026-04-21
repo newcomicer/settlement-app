@@ -188,17 +188,18 @@
     <table style="font-size:10px;">
       <thead><tr>
         <th>選手繳費</th><th>ATM手續費</th><th>超商手續費</th>
-        <th>退費</th><th>晶片押金</th><th>服務費</th>
-        <th>前次結算</th><th>結算金額</th>
+        <th>信用卡手續費</th><th>退費</th><th>晶片押金</th>
+        <th>服務費</th><th>前次結算</th><th>結算金額</th>
       </tr></thead>
       <tbody><tr class="total-row">
         <td class="text-right">{{ "{:,}".format(settlement.method1.actual_paid | int) }}</td>
         <td class="text-right">{{ deduct(-settlement.method1.atm_fee) }}</td>
         <td class="text-right">{{ deduct(-settlement.method1.cvs_fee) }}</td>
+        <td class="text-right">{{ deduct(settlement.method1.cc_fee) }}</td>
         <td class="text-right">{{ deduct(-settlement.method1.refund) }}</td>
         <td class="text-right">{{ deduct(-settlement.method1.chip_deposit) }}</td>
         <td class="text-right">{{ deduct(settlement.timing_total) }}</td>
-        <td class="text-right">{{ deduct(settlement.prev_total) }}</td>
+        <td class="text-right">{{ deduct(settlement.method1.prev_total) }}</td>
         <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method1.total | int) }}</td>
       </tr></tbody>
     </table>
@@ -220,7 +221,7 @@
         <td class="text-right">{{ "{:,}".format(settlement.method2.overpaid | int) }}</td>
         <td class="text-right">{{ deduct(settlement.method2.cc_fee) }}</td>
         <td class="text-right">{{ deduct(settlement.timing_total) }}</td>
-        <td class="text-right">{{ deduct(settlement.prev_total) }}</td>
+        <td class="text-right">{{ deduct(settlement.method2.prev_total) }}</td>
         <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method2.total | int) }}</td>
       </tr></tbody>
     </table>
