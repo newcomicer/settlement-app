@@ -111,9 +111,13 @@ def parse_excel(filepath):
         if event:
             registration[str(event)] = registration.get(str(event), 0) + 1
 
-    # ── 公關人數：優先從「免費名單」工作表，其次從訂單類型判斷 ──
+    # ── 公關人數：優先從「免費名單」工作表，其次從報名項目費用判斷 ──
+    # 核心邏輯：「報名項目費用」欄位為空（NULL）= 公關（不需付報名費）
+    # 加購公關：費用為空 且 訂單類型不含「需付加價購」（免報名費但仍付加購的不算加購公關）
     pr_counts = {k: 0 for k in registration}
-    free_keywords = ['免費', '公關', '贊助', 'VIP免費']
+    fee_col_pr = colidx('報名項目費用')   # 用來判斷公關的費用欄
+    ADDON_PAID_KEYWORD = '需付加價購'      # 雖免報名費但仍須付加購費
+    REG_PR_KEYWORDS = ['全免費', '免報名費', '公關', '贊助', 'VIP免費']  # 備援用
 
     if '免費名單' in wb.sheetnames:
         ws_free = wb['免費名單']
@@ -125,11 +129,19 @@ def parse_excel(filepath):
                     e = str(row[fe_col]) if row[fe_col] else None
                     if e and e in pr_counts:
                         pr_counts[e] += 1
+    elif fee_col_pr is not None:
+        # 報名項目費用為空 → 公關（不需付報名費）
+        for row in data_rows:
+            event = str(row[event_col]) if row[event_col] else ''
+            if event in pr_counts and row[fee_col_pr] is None:
+                pr_counts[event] += 1
     elif type_col is not None:
+        # 備援：若無費用欄，改用訂單類型關鍵字
+        REG_PR_KEYWORDS = ['全免費', '免報名費', '公關', '贊助', 'VIP免費']
         for row in data_rows:
             otype = str(row[type_col]) if row[type_col] else ''
             event = str(row[event_col]) if row[event_col] else ''
-            if event in pr_counts and any(k in otype for k in free_keywords):
+            if event in pr_counts and any(k in otype for k in REG_PR_KEYWORDS):
                 pr_counts[event] += 1
 
     # ── 加購數量：動態偵測，直接加總所有列（加購是每人獨立的）──
@@ -138,12 +150,23 @@ def parse_excel(filepath):
         if h and ('加購' in str(h) or '加價購' in str(h)) and '總數量' in str(h)
     ]
     # 同時找對應的金額欄，用來推算單價
+    # 優先用不含「訂單」的金額欄（逐列金額），備援才用訂單總金額（常為 None）
+    def find_addon_amt_col(qty_header):
+        key = str(qty_header).replace('總數量','').replace('訂單','').strip().rstrip('-').strip()
+        # 優先：不含「訂單」的金額欄
+        col = next((i2 for i2, h2 in enumerate(headers)
+                    if h2 and '金額' in str(h2) and '訂單' not in str(h2)
+                    and str(h2).replace('總金額','').strip().rstrip('-').strip() == key), None)
+        if col is not None:
+            return col
+        # 備援：訂單總金額
+        return next((i2 for i2, h2 in enumerate(headers)
+                     if h2 and '金額' in str(h2)
+                     and str(h2).replace('總金額','').replace('訂單','').strip().rstrip('-').strip() == key), None)
+
     addon_amt_cols = {
         str(h).replace('總數量','').replace('訂單','').strip().rstrip('-').strip():
-        next((i2 for i2,h2 in enumerate(headers)
-              if h2 and str(h2).replace('總金額','').replace('訂單','').strip().rstrip('-').strip()
-              == str(h).replace('總數量','').replace('訂單','').strip().rstrip('-').strip()
-              and '金額' in str(h2)), None)
+        find_addon_amt_col(h)
         for i, h in addon_qty_cols
     }
     addons = {}
@@ -155,11 +178,21 @@ def parse_excel(filepath):
         total_qty = sum(safe_num(row[i]) for row in data_rows)
         addons[name] = int(total_qty)
 
-        # 公關加購數量：訂單類型含免費關鍵字的列加總
-        if type_col is not None:
+        # 公關加購數量：報名項目費用為空 且 非「需付加價購」類型
+        if fee_col_pr is not None:
             pr_qty = sum(
                 safe_num(row[i]) for row in data_rows
-                if any(kw in str(row[type_col] or '') for kw in free_keywords)
+                if row[fee_col_pr] is None
+                and ADDON_PAID_KEYWORD not in str(row[type_col] or '' if type_col is not None else '')
+            )
+            if pr_qty > 0:
+                addon_pr_auto[name] = int(pr_qty)
+        elif type_col is not None:
+            # 備援：費用欄不存在時，只抓「全免費」
+            pr_qty = sum(
+                safe_num(row[i]) for row in data_rows
+                if '全免費' in str(row[type_col] or '')
+                and ADDON_PAID_KEYWORD not in str(row[type_col] or '')
             )
             if pr_qty > 0:
                 addon_pr_auto[name] = int(pr_qty)
@@ -179,17 +212,16 @@ def parse_excel(filepath):
     # ── 組別單價：從報名項目費用欄自動推算（取付費者最常見的金額）──
     reg_prices_auto = {}
     fee_col = colidx('報名項目費用')
-    free_keywords = ['免費', '公關', '贊助', 'VIP免費']
-    if fee_col is not None and type_col is not None:
+    if fee_col is not None:
         from collections import Counter
         for k in registration:
             prices_seen = []
             for row in data_rows:
                 if str(row[event_col] or '') != k:
                     continue
-                otype = str(row[type_col] or '')
-                if any(kw in otype for kw in free_keywords):
-                    continue  # 排除免費名額
+                # 排除公關（費用欄為空）；若費用欄不存在則用訂單類型關鍵字備援
+                if row[fee_col] is None:
+                    continue
                 fee = safe_num(row[fee_col])
                 if fee > 0:
                     prices_seen.append(int(fee))
