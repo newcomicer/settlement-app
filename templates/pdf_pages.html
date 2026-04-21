@@ -135,8 +135,8 @@
         <td class="text-center">{{ r.count }}</td>
         <td class="text-center">{{ r.pr }}</td>
         <td class="text-center">{{ r.count - r.pr }}</td>
-        <td class="text-right">{{ r.price }}</td>
-        <td class="text-right">{{ "{:,}".format(r.total) }}</td>
+        <td class="text-right">{{ "{:,}".format(r.price | int) }}</td>
+        <td class="text-right">{{ "{:,}".format(r.total | int) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -160,8 +160,8 @@
         <td>{{ a.name }}</td>
         <td class="text-center">{{ a.qty }}</td>
         <td class="text-center">{{ a.pr }}</td>
-        <td class="text-right">{{ a.price }}</td>
-        <td class="text-right">{{ "{:,}".format(a.total) }}</td>
+        <td class="text-right">{{ "{:,}".format(a.price | int) }}</td>
+        <td class="text-right">{{ "{:,}".format(a.total | int) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -178,9 +178,9 @@
       {% for t in settlement.timing_breakdown %}
       <tr>
         <td>{{ t.item }}</td>
-        <td class="text-center">{{ "{:,}".format(t.qty) }}</td>
-        <td class="text-right">{{ t.unit }}</td>
-        <td class="text-right">{{ "{:,}".format(t.subtotal) }}</td>
+        <td class="text-center">{{ "{:,}".format(t.qty | int) if not t.is_percent else "—" }}</td>
+        <td class="text-right">{% if t.is_percent %}{{ t.unit | int }}%（按前項小計）{% else %}{{ "{:,}".format(t.unit | int) }}{% endif %}</td>
+        <td class="text-right">{{ "{:,}".format(t.subtotal | int) }}</td>
       </tr>
       {% endfor %}
     </tbody>
