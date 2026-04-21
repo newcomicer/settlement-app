@@ -87,7 +87,7 @@
     </svg>
     <div class="leading-tight">
       <div class="text-base font-black tracking-wide">筆記報名</div>
-      <div class="text-xs text-blue-200 -mt-0.5">經費結算系統</div>
+      <div class="text-xs text-blue-200 -mt-0.5">經費結算系統 <span class="opacity-60">v{{ app_version }}</span></div>
     </div>
     <span class="badge bg-white text-[#003CAA]" id="status-badge">等待上傳</span>
   </div>
@@ -119,8 +119,10 @@
   </div>
   <div class="acc-body">
     <div class="acc-body-inner space-y-2">
-      <div><span class="lbl">活動名稱</span><input type="text" id="event_name" class="ni" placeholder="活動名稱"></div>
-      <div><span class="lbl">請款日期</span><input type="date" id="payment_date" class="ni"></div>
+      <div><span class="lbl">活動名稱</span><input type="text" id="event_name" class="ni" placeholder="活動名稱" oninput="recalculate()"></div>
+      <div><span class="lbl">請款日期</span><input type="date" id="payment_date" class="ni" onchange="recalculate()"></div>
+      <div><span class="lbl">承辦人姓名</span><input type="text" id="contact_name" class="ni" placeholder="王小明" oninput="recalculate()"></div>
+      <div><span class="lbl">聯絡方式</span><input type="text" id="contact_info" class="ni" placeholder="02-1234-5678 / line@xxx" oninput="recalculate()"></div>
     </div>
   </div>
 
@@ -259,6 +261,7 @@
           <td id="p1_holder">—</td>
         </tr></tbody>
       </table>
+      <p class="text-xs text-gray-400 mt-1.5">承辦人：<span id="p1_contact" class="text-gray-600">—</span></p>
     </div>
 
     <!-- P2 -->
@@ -671,6 +674,8 @@ function getManual() {
   return {
     event_name:   document.getElementById('event_name').value,
     payment_date: document.getElementById('payment_date').value,
+    contact_name: document.getElementById('contact_name').value,
+    contact_info: document.getElementById('contact_info').value,
     bank_name:    document.getElementById('bank_name').value,
     bank_branch:  document.getElementById('bank_branch').value,
     bank_account: document.getElementById('bank_account').value,
@@ -759,6 +764,8 @@ function recalculate() {
   document.getElementById('p1_branch').textContent = m.bank_branch || '—';
   document.getElementById('p1_account').textContent= m.bank_account|| '—';
   document.getElementById('p1_holder').textContent = m.bank_holder || '—';
+  const contactStr = [m.contact_name, m.contact_info].filter(Boolean).join(' ｜ ');
+  document.getElementById('p1_contact').textContent = contactStr || '—';
 
   // Method 1
   document.getElementById('m1_paid').textContent   = fmt(fin.actual_paid||0);

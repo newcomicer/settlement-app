@@ -11,6 +11,10 @@ app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, 'templates'),
             static_folder=os.path.join(BASE_DIR, 'static'))
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
+# 版本號：從 VERSION 檔讀取
+_version_file = os.path.join(BASE_DIR, 'VERSION')
+APP_VERSION = open(_version_file).read().strip() if os.path.exists(_version_file) else 'dev'
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -358,7 +362,7 @@ def calculate_settlement(data):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', app_version=APP_VERSION)
 
 
 @app.route('/parse-excel', methods=['POST'])
