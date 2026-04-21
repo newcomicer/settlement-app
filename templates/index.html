@@ -154,12 +154,12 @@
       <div class="flex gap-2 pt-1 border-t border-gray-100 mt-1">
         <button onclick="saveTimingPreset()"
           class="flex-1 flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-[#003CAA] bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-[#003CAA] rounded-md px-2 py-1.5 transition-colors"
-          data-tip="儲存「匯款帳戶資訊」＋「服務費項目」為 .json 設定檔，下次載入後直接使用，不需重新填寫。">
+          data-tip="儲存「承辦人資訊」＋「匯款帳戶」＋「服務費項目」為 .json 設定檔，下次載入後直接使用，不需重新填寫。">
           <i data-lucide="save" class="w-3 h-3"></i> 儲存設定檔
         </button>
         <button onclick="document.getElementById('preset-input').click()"
           class="flex-1 flex items-center justify-center gap-1 text-xs text-gray-500 hover:text-[#003CAA] bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-[#003CAA] rounded-md px-2 py-1.5 transition-colors"
-          data-tip="載入之前儲存的 .json 設定檔，自動填入「匯款帳戶資訊」並重建「服務費項目」清單。">
+          data-tip="載入之前儲存的 .json 設定檔，自動填入「承辦人資訊」、「匯款帳戶」並重建「服務費項目」清單。">
           <i data-lucide="folder-open" class="w-3 h-3"></i> 載入設定檔
         </button>
         <input type="file" id="preset-input" accept=".json" class="hidden" onchange="loadTimingPreset(this)">
@@ -592,6 +592,10 @@ function getTimingItems() {
 function saveTimingPreset() {
   const items = getTimingItems();
   const preset = {
+    contact: {
+      name: document.getElementById('contact_name')?.value || '',
+      info: document.getElementById('contact_info')?.value || '',
+    },
     bank: {
       name:    document.getElementById('bank_name')?.value    || '',
       branch:  document.getElementById('bank_branch')?.value  || '',
@@ -600,8 +604,8 @@ function saveTimingPreset() {
     },
     timingItems: items,
   };
-  if (items.length === 0 && !preset.bank.name && !preset.bank.account) {
-    alert('匯款帳戶和服務費項目都是空的，無法儲存。'); return;
+  if (items.length === 0 && !preset.bank.name && !preset.bank.account && !preset.contact.name) {
+    alert('承辦人、匯款帳戶和服務費項目都是空的，無法儲存。'); return;
   }
   const json = JSON.stringify(preset, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -621,8 +625,12 @@ function loadTimingPreset(input) {
     try {
       const data = JSON.parse(e.target.result);
       // 相容舊格式（純陣列）
-      const bank  = data.bank || {};
-      const items = Array.isArray(data) ? data : (data.timingItems || []);
+      const contact = data.contact || {};
+      const bank    = data.bank    || {};
+      const items   = Array.isArray(data) ? data : (data.timingItems || []);
+      // 填入承辦人
+      if (contact.name !== undefined) document.getElementById('contact_name').value = contact.name;
+      if (contact.info !== undefined) document.getElementById('contact_info').value = contact.info;
       // 填入匯款帳戶
       if (bank.name    !== undefined) document.getElementById('bank_name').value    = bank.name;
       if (bank.branch  !== undefined) document.getElementById('bank_branch').value  = bank.branch;
