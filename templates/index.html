@@ -874,9 +874,12 @@ async function generatePDF() {
   });
   if (res.ok) {
     const blob = await res.blob();
+    const now = new Date();
+    const ts = now.toLocaleString('sv-SE', {timeZone:'Asia/Taipei'})
+                  .replace(/[-: ]/g,'').slice(0,12);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `費用申請_${manual.event_name||'活動'}.pdf`;
+    a.download = `費用申請_${manual.event_name||'活動'}v${ts}.pdf`;
     a.click();
   } else {
     const e = await res.json().catch(()=>({}));

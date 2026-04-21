@@ -416,11 +416,9 @@ def generate_pdf_route():
         os.unlink(tmp_pdf)
         out.seek(0)
 
-        from datetime import datetime
         name = data.get('manual', {}).get('event_name', '活動')
-        ts = datetime.now().strftime('%Y%m%d%H%M')
         return send_file(out, as_attachment=True,
-                         download_name=f'費用申請_{name}v{ts}.pdf',
+                         download_name=f'費用申請_{name}.pdf',
                          mimetype='application/pdf')
     except Exception as e:
         return jsonify({'error': str(e), 'detail': traceback.format_exc()}), 500
