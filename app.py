@@ -78,30 +78,35 @@ def parse_excel(filepath):
     # ATM/超商手續費：支援「ATM虛擬帳號手續費」「藍新ATM虛擬帳號手續費」等所有變體，全部加總
     atm_cols = [i for i, h in enumerate(headers) if h and 'ATM' in str(h) and '手續費' in str(h)]
     cvs_cols = [i for i, h in enumerate(headers) if h and '超商' in str(h) and '手續費' in str(h)]
+    # 信用卡線上刷卡總金額：用來計算方式二的信用卡手續費（× 3%）
+    credit_card_col = next((i for i, h in enumerate(headers)
+                            if h and '信用卡' in str(h) and ('刷卡' in str(h) or '線上' in str(h))), None)
 
     if totals_row:
-        actual_paid  = safe_num(totals_row[paid_col])
-        postal       = sum(safe_num(totals_row[c]) for c in postal_cols)
-        chip_deposit = safe_num(totals_row[chip_col])      if chip_col      else 0
-        refund_fee   = safe_num(totals_row[refund_col])    if refund_col    else 0
-        downgrade    = safe_num(totals_row[downgrade_col]) if downgrade_col else 0
-        atm_fee      = sum(safe_num(totals_row[c]) for c in atm_cols)
-        cvs_fee      = sum(safe_num(totals_row[c]) for c in cvs_cols)
+        actual_paid      = safe_num(totals_row[paid_col])
+        postal           = sum(safe_num(totals_row[c]) for c in postal_cols)
+        chip_deposit     = safe_num(totals_row[chip_col])         if chip_col         else 0
+        refund_fee       = safe_num(totals_row[refund_col])       if refund_col       else 0
+        downgrade        = safe_num(totals_row[downgrade_col])    if downgrade_col    else 0
+        atm_fee          = sum(safe_num(totals_row[c]) for c in atm_cols)
+        cvs_fee          = sum(safe_num(totals_row[c]) for c in cvs_cols)
+        credit_card_total= safe_num(totals_row[credit_card_col]) if credit_card_col  else 0
     else:
         # 逐訂單加總（每筆訂單只取第一列，避免重複）
         seen = set()
-        actual_paid = postal = chip_deposit = refund_fee = downgrade = atm_fee = cvs_fee = 0
+        actual_paid = postal = chip_deposit = refund_fee = downgrade = atm_fee = cvs_fee = credit_card_total = 0
         for row in data_rows:
             oid = row[order_col]
             if oid and oid not in seen:
                 seen.add(oid)
-                if paid_col:      actual_paid  += safe_num(row[paid_col])
-                for c in postal_cols: postal   += safe_num(row[c])
-                if chip_col:      chip_deposit += safe_num(row[chip_col])
-                if refund_col:    refund_fee   += safe_num(row[refund_col])
-                if downgrade_col: downgrade    += safe_num(row[downgrade_col])
-                for c in atm_cols: atm_fee     += safe_num(row[c])
-                for c in cvs_cols: cvs_fee     += safe_num(row[c])
+                if paid_col:         actual_paid       += safe_num(row[paid_col])
+                for c in postal_cols: postal            += safe_num(row[c])
+                if chip_col:         chip_deposit       += safe_num(row[chip_col])
+                if refund_col:       refund_fee         += safe_num(row[refund_col])
+                if downgrade_col:    downgrade          += safe_num(row[downgrade_col])
+                for c in atm_cols: atm_fee            += safe_num(row[c])
+                for c in cvs_cols: cvs_fee            += safe_num(row[c])
+                if credit_card_col: credit_card_total += safe_num(row[credit_card_col])
 
     # ── 組別人數：動態偵測 ──
     event_col = colidx('參與項目')
@@ -245,8 +250,9 @@ def parse_excel(filepath):
             'chip_deposit': int(chip_deposit),
             'refund_fee':   int(refund_fee),
             'downgrade':    int(downgrade),
-            'atm_fee':      int(atm_fee),
-            'cvs_fee':      int(cvs_fee),
+            'atm_fee':           int(atm_fee),
+            'cvs_fee':           int(cvs_fee),
+            'credit_card_total': int(credit_card_total),
         },
         'has_totals_row': totals_row is not None,
     }
@@ -300,15 +306,24 @@ def calculate_settlement(data):
 
     timing_total = round(timing_subtotal * 1.05)
 
+    # 前次結算 / 信用卡手續費 / 公關晶片押金
+    prev_settlements = manual.get('prev_settlements', [])
+    prev_total       = sum(float(item.get('amount', 0)) for item in prev_settlements)
+    credit_card_fee  = float(manual.get('credit_card_fee', 0))
+    pr_chip_deposit  = float(manual.get('pr_chip_deposit', 0))
+
     # 方式一
     atm_fee  = -manual.get('atm_fee', 0)
     cvs_fee  = -manual.get('cvs_fee', 0)
     refund   = -(fin.get('refund_fee', 0) + fin.get('downgrade', 0) + manual.get('refund_extra', 0))
     chip     = -fin.get('chip_deposit', 0)
-    method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - timing_total
+    method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - timing_total - prev_total
 
     # 方式二
-    method2_total = reg_fee + addon_fee + fin.get('postal', 0) + manual.get('overpaid', 0) - timing_total
+    method2_total = reg_fee + addon_fee + fin.get('postal', 0) + manual.get('overpaid', 0) - credit_card_fee - timing_total - prev_total
+
+    # 最終請款金額（扣除公關晶片押金）
+    final_amount = method1_total - pr_chip_deposit
 
     # 組別明細
     reg_breakdown = [
@@ -341,6 +356,7 @@ def calculate_settlement(data):
             'cvs_fee':      cvs_fee,
             'refund':       refund,
             'chip_deposit': chip,
+            'prev_total':   prev_total,
             'total':        method1_total,
         },
         'method2': {
@@ -348,6 +364,8 @@ def calculate_settlement(data):
             'addon_fee': addon_fee,
             'postal':    fin.get('postal', 0),
             'overpaid':  manual.get('overpaid', 0),
+            'cc_fee':    credit_card_fee,
+            'prev_total': prev_total,
             'total':     method2_total,
         },
         'timing_breakdown': timing_breakdown,
@@ -357,6 +375,10 @@ def calculate_settlement(data):
         'addon_breakdown':  addon_breakdown,
         'total_participants': total_participants,
         'billing_count':    billing_count,
+        'prev_total':       prev_total,
+        'prev_items':       prev_settlements,
+        'pr_chip_deposit':  pr_chip_deposit,
+        'final_amount':     final_amount,
     }
 
 
