@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>經費結算系統</title>
+<title>筆記報名 經費結算系統</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <style>
@@ -16,13 +16,13 @@
   .upload-zone:hover { border-color:#3b82f6; background:#f0f9ff; }
   .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
   .preview-table { width:100%; border-collapse:collapse; font-size:12px; }
-  .preview-table th { background:#1e3a5f; color:white; padding:6px 8px; text-align:center; }
+  .preview-table th { background:#003CAA; color:white; padding:6px 8px; text-align:center; }
   .preview-table td { padding:5px 8px; border-bottom:1px solid #e5e7eb; }
   .preview-table tr:nth-child(even) td { background:#f8fafc; }
-  .total-row td { background:#eff6ff!important; font-weight:700; }
+  .total-row td { background:#e8eef8!important; font-weight:700; }
   .method-box { border:1px solid #dde3ef; border-radius:6px; overflow:hidden; margin-bottom:10px; }
-  .method-hdr { background:#1e3a5f; color:white; padding:6px 12px; font-size:11px; font-weight:700; }
-  .result-amount { font-size:22px; font-weight:900; color:#1e3a5f; }
+  .method-hdr { background:#003CAA; color:white; padding:6px 12px; font-size:11px; font-weight:700; }
+  .result-amount { font-size:22px; font-weight:900; color:#003CAA; }
   .lbl { font-size:11px; color:#6b7280; display:block; margin-bottom:2px; }
   .del-btn { color:#ef4444; cursor:pointer; padding:2px 4px; border-radius:4px; }
   .del-btn:hover { background:#fee2e2; }
@@ -32,7 +32,7 @@
   .acc-hdr { display:flex; align-items:center; justify-content:space-between;
     background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;
     padding:7px 10px; cursor:pointer; user-select:none; margin-bottom:2px; }
-  .acc-hdr:hover { background:#f0f9ff; border-color:#bfdbfe; }
+  .acc-hdr:hover { background:#e8eef8; border-color:#a3b8e0; }
   .acc-hdr .acc-title { font-size:12px; font-weight:700; color:#374151; display:flex; align-items:center; gap:6px; }
   .acc-hdr .acc-arrow { transition:transform .2s; color:#9ca3af; font-size:10px; }
   .acc-hdr.open .acc-arrow { transform:rotate(180deg); }
@@ -63,13 +63,21 @@
 <div id="tip-float"></div>
 
 <!-- Top bar -->
-<div class="bg-[#1e3a5f] text-white px-6 py-3 flex items-center justify-between">
+<div class="bg-[#003CAA] text-white px-6 py-3 flex items-center justify-between">
   <div class="flex items-center gap-3">
-    <span class="text-lg font-bold">⚡ 經費結算系統</span>
-    <span class="badge bg-blue-400 text-white" id="status-badge">等待上傳</span>
+    <!-- 筆記報名 N Logo -->
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="28" height="28" rx="4" fill="white"/>
+      <path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="#003CAA"/>
+    </svg>
+    <div class="leading-tight">
+      <div class="text-base font-black tracking-wide">筆記報名</div>
+      <div class="text-xs text-blue-200 -mt-0.5">經費結算系統</div>
+    </div>
+    <span class="badge bg-white text-[#003CAA]" id="status-badge">等待上傳</span>
   </div>
   <button id="btn-pdf" onclick="generatePDF()"
-    class="bg-white text-[#1e3a5f] font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center gap-2"
+    class="bg-white text-[#003CAA] font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center gap-2"
     disabled>
     <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF
   </button>
@@ -90,11 +98,11 @@
   <input type="file" id="excel-input" accept=".xlsx,.xls" class="hidden" onchange="uploadExcel(this.files[0])">
 
   <!-- 基本資訊 -->
-  <div class="acc-hdr open" onclick="toggleAcc(this)">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
     <span class="acc-title">📋 基本資訊</span>
     <span class="acc-arrow">▼</span>
   </div>
-  <div class="acc-body open">
+  <div class="acc-body">
     <div class="acc-body-inner space-y-2">
       <div><span class="lbl">活動名稱</span><input type="text" id="event_name" class="ni" placeholder="活動名稱"></div>
       <div><span class="lbl">請款日期</span><input type="date" id="payment_date" class="ni"></div>
@@ -102,11 +110,11 @@
   </div>
 
   <!-- 匯款帳戶 -->
-  <div class="acc-hdr open" onclick="toggleAcc(this)">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
     <span class="acc-title">🏦 匯款帳戶</span>
     <span class="acc-arrow">▼</span>
   </div>
-  <div class="acc-body open">
+  <div class="acc-body">
     <div class="acc-body-inner space-y-2">
       <div><span class="lbl">銀行名稱＋代號</span><input type="text" id="bank_name" class="ni" placeholder="合作金庫 006"></div>
       <div><span class="lbl">分行名稱＋代號</span><input type="text" id="bank_branch" class="ni" placeholder="永安分行 1715"></div>
@@ -116,37 +124,51 @@
   </div>
 
   <!-- 財務調整 -->
-  <div class="acc-hdr open" onclick="toggleAcc(this)">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
     <span class="acc-title">💰 財務調整</span>
     <span class="acc-arrow">▼</span>
   </div>
-  <div class="acc-body open">
-    <div class="acc-body-inner space-y-1">
-      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">ATM 手續費</span><input type="number" id="atm_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
-      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">超商手續費</span><input type="number" id="cvs_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
-      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">退費修正</span><input type="number" id="refund_extra" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
-      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">晶片押金</span><input type="number" id="chip_deposit" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
-      <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">溢繳金額</span><input type="number" id="overpaid" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+  <div class="acc-body">
+    <div class="acc-body-inner space-y-2">
+      <!-- 方式一 -->
+      <p class="text-xs font-bold text-gray-400 uppercase tracking-wide pt-1">方式一</p>
+      <div class="space-y-1">
+        <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">ATM 手續費</span><input type="number" id="atm_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+        <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">超商手續費</span><input type="number" id="cvs_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+        <div class="flex gap-2 items-center">
+          <span class="lbl flex-1 mb-0">待退款之待退金額 <span class="text-red-400 text-xs font-semibold">（後台）</span></span>
+          <input type="number" id="refund_extra" class="ni ni-r w-28" value="0" oninput="recalculate()">
+        </div>
+        <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">晶片押金</span><input type="number" id="chip_deposit" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+      </div>
+      <!-- 方式二 -->
+      <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">方式二</p>
+      <div class="space-y-1">
+        <div class="flex gap-2 items-center">
+          <span class="lbl flex-1 mb-0">溢繳金額 <span class="text-red-400 text-xs font-semibold">（後台）</span></span>
+          <input type="number" id="overpaid" class="ni ni-r w-28" value="0" oninput="recalculate()">
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- 報名組別 -->
-  <div class="acc-hdr open" onclick="toggleAcc(this)">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
     <span class="acc-title">🏅 報名組別費用</span>
     <span class="acc-arrow">▼</span>
   </div>
-  <div class="acc-body open">
+  <div class="acc-body">
     <div class="acc-body-inner">
       <div id="reg-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入</p></div>
     </div>
   </div>
 
   <!-- 公關人數（移到加價購前面） -->
-  <div class="acc-hdr open" onclick="toggleAcc(this)">
+  <div class="acc-hdr" onclick="toggleAcc(this)">
     <span class="acc-title">🎟 公關人數</span>
     <span class="acc-arrow">▼</span>
   </div>
-  <div class="acc-body open">
+  <div class="acc-body">
     <div class="acc-body-inner">
       <div id="pr-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入（可手動調整）</p></div>
     </div>
@@ -194,7 +216,7 @@
     <!-- P1 -->
     <div class="bg-white rounded-xl shadow-sm p-4">
       <div class="flex items-center gap-2 mb-3">
-        <span class="badge bg-[#1e3a5f] text-white">第1頁</span>
+        <span class="badge bg-[#003CAA] text-white">第1頁</span>
         <h2 class="font-bold text-gray-700 text-sm">匯款申請表</h2>
       </div>
       <table class="preview-table">
@@ -202,7 +224,7 @@
         <tbody><tr>
           <td id="p1_date" class="text-center">—</td>
           <td id="p1_reason">—</td>
-          <td id="p1_amount" class="text-right font-bold text-blue-800">—</td>
+          <td id="p1_amount" class="text-right font-bold text-[#003CAA]">—</td>
           <td id="p1_bank">—</td>
           <td id="p1_branch">—</td>
           <td id="p1_account">—</td>
@@ -214,7 +236,7 @@
     <!-- P2 -->
     <div class="bg-white rounded-xl shadow-sm p-4">
       <div class="flex items-center gap-2 mb-3">
-        <span class="badge bg-emerald-600 text-white">第2頁</span>
+        <span class="badge bg-[#828282] text-white">第2頁</span>
         <h2 class="font-bold text-gray-700 text-sm">經費結算明細</h2>
       </div>
 
@@ -250,7 +272,7 @@
         <tbody id="timing-tbody"></tbody>
         <tfoot>
           <tr><td colspan="3" class="text-right text-xs text-gray-400">小計（未稅）</td><td id="timing_sub" class="text-right font-semibold">—</td></tr>
-          <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td id="timing_ttl" class="text-right text-blue-800">—</td></tr>
+          <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td id="timing_ttl" class="text-right text-[#003CAA]">—</td></tr>
         </tfoot>
       </table>
 
@@ -262,7 +284,7 @@
             <th><span class="tip-wrap">選手繳費<span class="tip-icon" data-tip="Excel「實繳金額」欄位加總（已扣除退費與手續費）">ⓘ</span></span></th>
             <th><span class="tip-wrap">ATM手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「ATM虛擬帳號手續費」欄">ⓘ</span></span></th>
             <th><span class="tip-wrap">超商手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「超商繳款手續費」欄">ⓘ</span></span></th>
-            <th><span class="tip-wrap">退費<span class="tip-icon" data-tip="Excel「已退金額」+「退款手續費」+「降組不退費」+左側退費修正">ⓘ</span></span></th>
+            <th><span class="tip-wrap">退費<span class="tip-icon" data-tip="Excel「退費手續費總金額」＋「降組不退費總金額」＋左側手動輸入「待退款之待退金額」（後台待退款金額）">ⓘ</span></span></th>
             <th><span class="tip-wrap">晶片押金<span class="tip-icon" data-tip="左側手動輸入。若 Excel 有「晶片押金訂單總金額」欄則自動帶入">ⓘ</span></span></th>
             <th><span class="tip-wrap">服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span></th>
             <th><span class="tip-wrap">結算金額<span class="tip-icon" data-tip="選手繳費 − ATM手續費 − 超商手續費 − 退費 − 晶片押金 − 服務費">ⓘ</span></span></th>
@@ -274,7 +296,7 @@
             <td id="m1_refund" class="text-right">—</td>
             <td id="m1_chip" class="text-right">—</td>
             <td id="m1_timing" class="text-right">—</td>
-            <td id="m1_total" class="text-right text-blue-800">—</td>
+            <td id="m1_total" class="text-right text-[#003CAA]">—</td>
           </tr></tbody>
         </table>
       </div>
@@ -297,13 +319,13 @@
             <td id="m2_postal" class="text-right">—</td>
             <td id="m2_overpaid" class="text-right">—</td>
             <td id="m2_timing" class="text-right">—</td>
-            <td id="m2_total" class="text-right text-blue-800">—</td>
+            <td id="m2_total" class="text-right text-[#003CAA]">—</td>
           </tr></tbody>
         </table>
       </div>
 
       <!-- Result -->
-      <div class="flex items-center justify-end gap-4 bg-blue-50 rounded-lg p-3">
+      <div class="flex items-center justify-end gap-4 bg-[#e8eef8] rounded-lg p-3">
         <span class="text-sm text-gray-600 font-semibold">本次結算金額</span>
         <span class="result-amount" id="result_amount">NT$ —</span>
       </div>

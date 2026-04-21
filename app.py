@@ -61,28 +61,28 @@ def parse_excel(filepath):
     # ── 財務數字：優先用合計列，否則逐訂單加總 ──
     order_col = 1  # 訂單編號通常在第2欄
     # 郵寄費：可能有多欄（本島、離島、現場報到等），全部加總
-    # 支援欄位名：「郵寄費用...金額」、「郵寄報到...金額」、「現場報到...金額」
+    # 支援欄位名：「郵寄...金額」、「現場報到...金額」、「現場報到...費」等
     postal_cols  = [i for i, h in enumerate(headers)
-                    if h and ('郵寄' in str(h) or '現場報到' in str(h)) and '金額' in str(h)]
+                    if h and (
+                        ('郵寄' in str(h) and '金額' in str(h)) or
+                        ('現場報到' in str(h) and ('金額' in str(h) or '費' in str(h)))
+                    )]
     postal_col   = postal_cols[0] if len(postal_cols) == 1 else None  # 單欄時沿用舊邏輯
-    chip_col     = colidx('晶片押金訂單總金額')
-    refund_col   = colidx('退費手續費總金額')
+    chip_col      = colidx('晶片押金訂單總金額')
+    refund_col    = colidx('退費手續費總金額')
     downgrade_col = colidx('降組不退費總金額')
-    atm_col      = colidx('ATM虛擬帳號手續費')
-    cvs_col      = colidx('超商繳款手續費')
-    atm_new_col  = colidx('藍新ATM')
-    cvs_new_col  = colidx('藍新超商')
+    # ATM/超商手續費：支援「ATM虛擬帳號手續費」「藍新ATM虛擬帳號手續費」等所有變體，全部加總
+    atm_cols = [i for i, h in enumerate(headers) if h and 'ATM' in str(h) and '手續費' in str(h)]
+    cvs_cols = [i for i, h in enumerate(headers) if h and '超商' in str(h) and '手續費' in str(h)]
 
     if totals_row:
         actual_paid  = safe_num(totals_row[paid_col])
         postal       = sum(safe_num(totals_row[c]) for c in postal_cols)
-        chip_deposit = safe_num(totals_row[chip_col])     if chip_col      else 0
-        refund_fee   = safe_num(totals_row[refund_col])   if refund_col    else 0
+        chip_deposit = safe_num(totals_row[chip_col])      if chip_col      else 0
+        refund_fee   = safe_num(totals_row[refund_col])    if refund_col    else 0
         downgrade    = safe_num(totals_row[downgrade_col]) if downgrade_col else 0
-        atm_fee      = safe_num(totals_row[atm_new_col] if atm_new_col else 0) + \
-                       safe_num(totals_row[atm_col]     if atm_col     else 0)
-        cvs_fee      = safe_num(totals_row[cvs_new_col] if cvs_new_col else 0) + \
-                       safe_num(totals_row[cvs_col]     if cvs_col     else 0)
+        atm_fee      = sum(safe_num(totals_row[c]) for c in atm_cols)
+        cvs_fee      = sum(safe_num(totals_row[c]) for c in cvs_cols)
     else:
         # 逐訂單加總（每筆訂單只取第一列，避免重複）
         seen = set()
@@ -96,10 +96,8 @@ def parse_excel(filepath):
                 if chip_col:      chip_deposit += safe_num(row[chip_col])
                 if refund_col:    refund_fee   += safe_num(row[refund_col])
                 if downgrade_col: downgrade    += safe_num(row[downgrade_col])
-                if atm_col:       atm_fee      += safe_num(row[atm_col])
-                if cvs_col:       cvs_fee      += safe_num(row[cvs_col])
-                if atm_new_col:   atm_fee      += safe_num(row[atm_new_col])
-                if cvs_new_col:   cvs_fee      += safe_num(row[cvs_new_col])
+                for c in atm_cols: atm_fee     += safe_num(row[c])
+                for c in cvs_cols: cvs_fee     += safe_num(row[c])
 
     # ── 組別人數：動態偵測 ──
     event_col = colidx('參與項目')
