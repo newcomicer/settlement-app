@@ -286,13 +286,15 @@
       <!-- Reg breakdown -->
       <p class="text-xs font-bold text-gray-500 mb-1">報名人數明細</p>
       <table class="preview-table mb-4">
-        <thead><tr><th>組別</th><th>總人數</th><th>公關</th><th>計費人數</th><th>單價</th><th>小計</th></tr></thead>
+        <thead><tr><th>組別</th><th>總人數</th><th>公關</th><th>繳費人數</th><th>單價</th><th>小計</th></tr></thead>
         <tbody id="reg-tbody"></tbody>
         <tfoot>
           <tr class="total-row">
             <td>合計</td>
             <td id="reg_count" class="text-center">—</td>
-            <td></td><td></td><td></td>
+            <td id="reg_pr_ttl" class="text-center">—</td>
+            <td id="reg_billing_ttl" class="text-center">—</td>
+            <td></td>
             <td id="reg_fee_ttl" class="text-right">—</td>
           </tr>
         </tfoot>
@@ -824,8 +826,12 @@ function recalculate() {
      <td class="text-center">${fmt(r.count-r.pr)}</td>
      <td class="text-right">${fmt(r.price)}</td>
      <td class="text-right">${fmt(r.total)}</td></tr>`).join('');
-  document.getElementById('reg_count').textContent   = fmt(totalCount);
-  document.getElementById('reg_fee_ttl').textContent = fmt(regFee);
+  const totalPr      = regRows.reduce((s, r) => s + r.pr, 0);
+  const totalBilling = regRows.reduce((s, r) => s + (r.count - r.pr), 0);
+  document.getElementById('reg_count').textContent       = fmt(totalCount);
+  document.getElementById('reg_pr_ttl').textContent      = fmt(totalPr);
+  document.getElementById('reg_billing_ttl').textContent = fmt(totalBilling);
+  document.getElementById('reg_fee_ttl').textContent     = fmt(regFee);
 
   // Addon table
   document.getElementById('addon-tbody').innerHTML = addonRows.map(a =>
