@@ -61,8 +61,9 @@ def parse_excel(filepath):
     # ── 財務數字：優先用合計列，否則逐訂單加總 ──
     order_col = 1  # 訂單編號通常在第2欄
     # 郵寄費：可能有多欄（本島、離島、現場報到等），全部加總
+    # 支援欄位名：「郵寄費用...金額」、「郵寄報到...金額」、「現場報到...金額」
     postal_cols  = [i for i, h in enumerate(headers)
-                    if h and ('郵寄費用' in str(h) or '現場報到' in str(h)) and '金額' in str(h)]
+                    if h and ('郵寄' in str(h) or '現場報到' in str(h)) and '金額' in str(h)]
     postal_col   = postal_cols[0] if len(postal_cols) == 1 else None  # 單欄時沿用舊邏輯
     chip_col     = colidx('晶片押金訂單總金額')
     refund_col   = colidx('退費手續費總金額')
