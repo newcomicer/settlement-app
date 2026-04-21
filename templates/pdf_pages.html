@@ -43,9 +43,14 @@
   /* Info card for P1 */
   .info-table td:first-child { font-weight: 600; color: #4b5563; width: 30%; background: #f1f5f9; }
   .amount-highlight { font-size: 16px; font-weight: 800; color: #003CAA; }
+  .neg { color: #ef4444; }
 </style>
 </head>
 <body>
+
+{# ── Jinja2 macro：負數（扣除項）顯示為紅色負號，零顯示破折號 ──
+   deduct(v): v 為正數，代表要扣除的金額，0 時顯示 — #}
+{% macro deduct(v) %}{% if v | int != 0 %}<span class="neg">-{{ "{:,}".format(v | int) }}</span>{% else %}—{% endif %}{% endmacro %}
 
 <!-- ============ PAGE 1: Payment Request ============ -->
 <div class="page">
@@ -188,12 +193,12 @@
       </tr></thead>
       <tbody><tr class="total-row">
         <td class="text-right">{{ "{:,}".format(settlement.method1.actual_paid | int) }}</td>
-        <td class="text-right">({{ "{:,}".format((-settlement.method1.atm_fee) | int) }})</td>
-        <td class="text-right">({{ "{:,}".format((-settlement.method1.cvs_fee) | int) }})</td>
-        <td class="text-right">({{ "{:,}".format((-settlement.method1.refund) | int) }})</td>
-        <td class="text-right">({{ "{:,}".format((-settlement.method1.chip_deposit) | int) }})</td>
-        <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
-        <td class="text-right">{% if settlement.prev_total > 0 %}({{ "{:,}".format(settlement.prev_total | int) }}){% else %}—{% endif %}</td>
+        <td class="text-right">{{ deduct(-settlement.method1.atm_fee) }}</td>
+        <td class="text-right">{{ deduct(-settlement.method1.cvs_fee) }}</td>
+        <td class="text-right">{{ deduct(-settlement.method1.refund) }}</td>
+        <td class="text-right">{{ deduct(-settlement.method1.chip_deposit) }}</td>
+        <td class="text-right">{{ deduct(settlement.timing_total) }}</td>
+        <td class="text-right">{{ deduct(settlement.prev_total) }}</td>
         <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method1.total | int) }}</td>
       </tr></tbody>
     </table>
@@ -213,9 +218,9 @@
         <td class="text-right">{{ "{:,}".format(settlement.method2.addon_fee | int) }}</td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.postal | int) }}</td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.overpaid | int) }}</td>
-        <td class="text-right">{% if settlement.method2.cc_fee > 0 %}({{ "{:,}".format(settlement.method2.cc_fee | int) }}){% else %}—{% endif %}</td>
-        <td class="text-right">({{ "{:,}".format(settlement.timing_total | int) }})</td>
-        <td class="text-right">{% if settlement.prev_total > 0 %}({{ "{:,}".format(settlement.prev_total | int) }}){% else %}—{% endif %}</td>
+        <td class="text-right">{{ deduct(settlement.method2.cc_fee) }}</td>
+        <td class="text-right">{{ deduct(settlement.timing_total) }}</td>
+        <td class="text-right">{{ deduct(settlement.prev_total) }}</td>
         <td class="text-right" style="color:#003CAA;">{{ "{:,}".format(settlement.method2.total | int) }}</td>
       </tr></tbody>
     </table>
