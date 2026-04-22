@@ -999,6 +999,8 @@ async function generatePDF() {
     addon_pr:     manual.addon_pr,
     financials:   state.financials,
     manual,
+    reg_order:   state.regOrder.length   ? state.regOrder   : Object.keys(state.registration),
+    addon_order: state.addonOrder.length ? state.addonOrder : Object.keys(state.addons),
   };
 
   const res = await fetch('/generate-pdf', {

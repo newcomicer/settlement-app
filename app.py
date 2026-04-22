@@ -327,7 +327,8 @@ def calculate_settlement(data):
     # 最終請款金額（扣除公關晶片押金）
     final_amount = method1_total - pr_chip_deposit
 
-    # 組別明細
+    # 組別明細（依前端拖曳順序）
+    reg_order = data.get('reg_order', list(reg.keys()))
     reg_breakdown = [
         {
             'name':  k,
@@ -336,10 +337,11 @@ def calculate_settlement(data):
             'price': reg_prices.get(k, 0),
             'total': (reg.get(k, 0) - pr.get(k, 0)) * reg_prices.get(k, 0),
         }
-        for k in reg
+        for k in reg_order if k in reg
     ]
 
-    # 加購明細
+    # 加購明細（依前端拖曳順序）
+    addon_order = data.get('addon_order', list(addons.keys()))
     addon_breakdown = [
         {
             'name':  k,
@@ -348,7 +350,7 @@ def calculate_settlement(data):
             'price': addon_prices.get(k, 0),
             'total': (addons.get(k, 0) - addon_pr.get(k, 0)) * addon_prices.get(k, 0),
         }
-        for k in addons
+        for k in addon_order if k in addons
     ]
 
     return {
