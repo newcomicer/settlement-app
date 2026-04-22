@@ -144,7 +144,9 @@
       <tr class="total-row">
         <td>合計</td>
         <td class="text-center">{{ settlement.total_participants }}</td>
-        <td></td><td></td><td></td>
+        <td class="text-center">{{ settlement.total_pr }}</td>
+        <td class="text-center">{{ settlement.total_billing }}</td>
+        <td></td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.reg_fee | int) }}</td>
       </tr>
     </tfoot>

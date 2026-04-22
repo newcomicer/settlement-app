@@ -316,7 +316,9 @@ def calculate_settlement(data):
     atm_fee  = -manual.get('atm_fee', 0)
     cvs_fee  = -manual.get('cvs_fee', 0)
     refund   = -(fin.get('refund_fee', 0) + fin.get('downgrade', 0) + manual.get('refund_extra', 0))
-    chip     = -fin.get('chip_deposit', 0)
+    # 晶片押金：手動輸入優先，其次用 Excel 自動讀取值
+    chip_deposit_val = manual.get('chip_deposit', 0) or fin.get('chip_deposit', 0)
+    chip     = -chip_deposit_val
     method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - credit_card_fee - timing_total - prev_total
 
     # 方式二
@@ -355,7 +357,8 @@ def calculate_settlement(data):
             'atm_fee':      atm_fee,
             'cvs_fee':      cvs_fee,
             'refund':       refund,
-            'chip_deposit': chip,
+            'chip_deposit': chip,           # 負值（用於 deduct macro）
+            'chip_deposit_val': chip_deposit_val,  # 正值（用於顯示）
             'cc_fee':       credit_card_fee,
             'prev_total':   prev_total,
             'total':        method1_total,
@@ -375,6 +378,8 @@ def calculate_settlement(data):
         'reg_breakdown':    reg_breakdown,
         'addon_breakdown':  addon_breakdown,
         'total_participants': total_participants,
+        'total_pr':      sum(r['pr']               for r in reg_breakdown),
+        'total_billing': sum(r['count'] - r['pr']  for r in reg_breakdown),
         'billing_count':    billing_count,
         'prev_total':       prev_total,
         'prev_items':       prev_settlements,
