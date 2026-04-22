@@ -406,6 +406,10 @@ def parse_excel_route():
         result = parse_excel(path)
     except Exception as e:
         return jsonify({'error': f'解析失敗：{e}', 'detail': traceback.format_exc()}), 500
+    finally:
+        # 解析完立刻刪除，避免含個資的 Excel 殘留在本機或被雲端同步
+        if os.path.exists(path):
+            os.unlink(path)
     return jsonify(result)
 
 
