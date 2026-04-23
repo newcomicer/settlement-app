@@ -88,14 +88,11 @@ python -m playwright install chromium
 > 啟動和關閉的 .command 各需允許一次
 
 ### Windows 用戶
-打開終端機，執行：
+雙擊資料夾裡的 **「啟動.bat」**，程式會自動開啟瀏覽器。
 
-```
-cd C:\Users\你的名字\Desktop\settlement-app-main
-python app.py
-```
+關閉跳出的黑色視窗即可停止程式。
 
-然後打開瀏覽器，前往 👉 http://127.0.0.1:5001
+> 如果出現「找不到 flask」的錯誤，請先完成 Step 3 的套件安裝再試一次。
 
 ---
 
