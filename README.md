@@ -44,9 +44,17 @@ git clone https://github.com/newcomicer/settlement-app
 
 打開終端機，進入剛才解壓縮的資料夾：
 
+**Mac 用戶：**
 ```bash
-cd ~/Desktop/settlement-app
+cd ~/Desktop/settlement-app-main
 ```
+
+**Windows 用戶：**
+```
+cd C:\Users\你的名字\Desktop\settlement-app-main
+```
+
+> 從 GitHub 下載 ZIP 解壓後，資料夾名稱會是 `settlement-app-main`
 
 然後執行以下兩行（逐行貼上，等每行跑完再貼下一行）：
 
@@ -82,9 +90,9 @@ python -m playwright install chromium
 ### Windows 用戶
 打開終端機，執行：
 
-```bash
-cd ~/Desktop/settlement-app
-python3 app.py
+```
+cd C:\Users\你的名字\Desktop\settlement-app-main
+python app.py
 ```
 
 然後打開瀏覽器，前往 👉 http://127.0.0.1:5001
