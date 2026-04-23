@@ -54,13 +54,18 @@ cd ~/Desktop/settlement-app
 pip3 install -r requirements.txt
 ```
 
+**Mac 用戶：**
 ```bash
 playwright install chromium
 ```
 
-> `playwright install chromium` 會下載約 150MB，這是產生 PDF 需要用到的瀏覽器核心，請耐心等候
+**Windows 用戶：**
+```bash
+python -m playwright install chromium
+```
 
-出現 `Chromium 版本號 downloaded` 之類的訊息就代表成功了。
+> 會下載約 150MB，這是產生 PDF 需要用到的瀏覽器核心，請耐心等候。  
+> 出現 `Chromium 版本號 downloaded` 之類的訊息就代表成功了。
 
 ---
 
