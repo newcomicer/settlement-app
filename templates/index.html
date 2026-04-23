@@ -354,57 +354,83 @@
       <!-- Method 1 -->
       <div class="method-box mb-3">
         <div class="method-hdr">方式一：實際收支結算</div>
-        <table class="preview-table">
-          <thead><tr>
-            <th><span class="tip-wrap">選手繳費<span class="tip-icon" data-tip="Excel「實繳金額」欄位加總（已扣除退費與手續費）">ⓘ</span></span></th>
-            <th><span class="tip-wrap">ATM手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「ATM虛擬帳號手續費」欄">ⓘ</span></span></th>
-            <th><span class="tip-wrap">超商手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「超商繳款手續費」欄">ⓘ</span></span></th>
-            <th><span class="tip-wrap">信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，由左側費用驗算帶入">ⓘ</span></span></th>
-            <th><span class="tip-wrap">退費<span class="tip-icon" data-tip="Excel「退費手續費總金額」＋「降組不退費總金額」＋左側手動輸入「待退款之待退金額」（後台待退款金額）">ⓘ</span></span></th>
-            <th><span class="tip-wrap">晶片押金<span class="tip-icon" data-tip="左側手動輸入。若 Excel 有「晶片押金訂單總金額」欄則自動帶入">ⓘ</span></span></th>
-            <th><span class="tip-wrap">服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span></th>
-            <th><span class="tip-wrap">前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span></th>
-            <th><span class="tip-wrap">結算金額<span class="tip-icon" data-tip="選手繳費 − ATM − 超商 − 信用卡手續費 − 退費 − 晶片押金 − 服務費 − 前次結算">ⓘ</span></span></th>
-          </tr></thead>
-          <tbody><tr class="total-row">
-            <td id="m1_paid" class="text-right">—</td>
-            <td id="m1_atm" class="text-right">—</td>
-            <td id="m1_cvs" class="text-right">—</td>
-            <td id="m1_cc" class="text-right">—</td>
-            <td id="m1_refund" class="text-right">—</td>
-            <td id="m1_chip" class="text-right">—</td>
-            <td id="m1_timing" class="text-right">—</td>
-            <td id="m1_prev" class="text-right">—</td>
-            <td id="m1_total" class="text-right text-[#003CAA]">—</td>
-          </tr></tbody>
-        </table>
+        <div class="px-4 py-3 space-y-1.5 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="tip-wrap text-gray-700">選手繳費<span class="tip-icon" data-tip="Excel「實繳金額」欄位加總（已扣除退費與手續費）">ⓘ</span></span>
+            <span id="m1_paid" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− ATM 手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「ATM虛擬帳號手續費」欄">ⓘ</span></span>
+            <span id="m1_atm" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 超商手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「超商繳款手續費」欄">ⓘ</span></span>
+            <span id="m1_cvs" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，由左側費用驗算帶入">ⓘ</span></span>
+            <span id="m1_cc" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 退費<span class="tip-icon" data-tip="Excel「退費手續費總金額」＋「降組不退費總金額」＋左側手動輸入「待退款之待退金額」（後台待退款金額）">ⓘ</span></span>
+            <span id="m1_refund" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 晶片押金<span class="tip-icon" data-tip="左側手動輸入。若 Excel 有「晶片押金訂單總金額」欄則自動帶入">ⓘ</span></span>
+            <span id="m1_chip" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span>
+            <span id="m1_timing" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span>
+            <span id="m1_prev" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center border-t border-gray-200 pt-2 mt-1">
+            <span class="tip-wrap font-bold text-gray-700">結算金額<span class="tip-icon" data-tip="選手繳費 − ATM − 超商 − 信用卡手續費 − 退費 − 晶片押金 − 服務費 − 前次結算">ⓘ</span></span>
+            <span id="m1_total" class="font-bold text-[#003CAA] tabular-nums">—</span>
+          </div>
+        </div>
       </div>
 
       <!-- Method 2 -->
       <div class="method-box mb-4">
         <div class="method-hdr">方式二：費用明細結算</div>
-        <table class="preview-table">
-          <thead><tr>
-            <th><span class="tip-wrap">選手報名費<span class="tip-icon" data-tip="各組（總人數 − 公關）× 單價 加總">ⓘ</span></span></th>
-            <th><span class="tip-wrap">加價購<span class="tip-icon" data-tip="各加購項目（數量 − 公關）× 單價 加總">ⓘ</span></span></th>
-            <th><span class="tip-wrap">郵寄費<span class="tip-icon" data-tip="Excel「郵寄報到」或「郵寄費用」金額欄加總">ⓘ</span></span></th>
-            <th><span class="tip-wrap">溢繳金額<span class="tip-icon" data-tip="左側手動輸入">ⓘ</span></span></th>
-            <th><span class="tip-wrap">信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，與方式一共用同一數值">ⓘ</span></span></th>
-            <th><span class="tip-wrap">服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span></th>
-            <th><span class="tip-wrap">前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span></th>
-            <th><span class="tip-wrap">結算金額<span class="tip-icon" data-tip="報名費 + 加價購 + 郵寄費 + 溢繳金額 − 信用卡手續費 − 服務費 − 前次結算">ⓘ</span></span></th>
-          </tr></thead>
-          <tbody><tr class="total-row">
-            <td id="m2_reg" class="text-right">—</td>
-            <td id="m2_addon" class="text-right">—</td>
-            <td id="m2_postal" class="text-right">—</td>
-            <td id="m2_overpaid" class="text-right">—</td>
-            <td id="m2_cc" class="text-right">—</td>
-            <td id="m2_timing" class="text-right">—</td>
-            <td id="m2_prev" class="text-right">—</td>
-            <td id="m2_total" class="text-right text-[#003CAA]">—</td>
-          </tr></tbody>
-        </table>
+        <div class="px-4 py-3 space-y-1.5 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="tip-wrap text-gray-700">選手報名費<span class="tip-icon" data-tip="各組（總人數 − 公關）× 單價 加總">ⓘ</span></span>
+            <span id="m2_reg" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">+ 加價購<span class="tip-icon" data-tip="各加購項目（數量 − 公關）× 單價 加總">ⓘ</span></span>
+            <span id="m2_addon" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">+ 郵寄費<span class="tip-icon" data-tip="Excel「郵寄報到」或「郵寄費用」金額欄加總">ⓘ</span></span>
+            <span id="m2_postal" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">+ 溢繳金額<span class="tip-icon" data-tip="左側手動輸入">ⓘ</span></span>
+            <span id="m2_overpaid" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，與方式一共用同一數值">ⓘ</span></span>
+            <span id="m2_cc" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span>
+            <span id="m2_timing" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+            <span class="tip-wrap">− 前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span>
+            <span id="m2_prev" class="tabular-nums">—</span>
+          </div>
+          <div class="flex justify-between items-center border-t border-gray-200 pt-2 mt-1">
+            <span class="tip-wrap font-bold text-gray-700">結算金額<span class="tip-icon" data-tip="報名費 + 加價購 + 郵寄費 + 溢繳金額 − 信用卡手續費 − 服務費 − 前次結算">ⓘ</span></span>
+            <span id="m2_total" class="font-bold text-[#003CAA] tabular-nums">—</span>
+          </div>
+        </div>
       </div>
 
       <!-- Mismatch warning -->
