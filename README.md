@@ -61,17 +61,19 @@ git clone https://github.com/newcomicer/settlement-app
 
 打開終端機，進入資料夾：
 
-**Mac 用戶：**
+> 📁 資料夾名稱說明：
+> - **ZIP 下載解壓**：資料夾名稱為 `settlement-app-main`
+> - **Git clone**：資料夾名稱為 `settlement-app`（沒有 `-main`）
+
+**Mac 用戶（ZIP 下載）：**
 ```bash
 cd ~/Desktop/settlement-app-main
 ```
 
-**Windows 用戶：**
+**Windows 用戶（ZIP 下載）：**
 ```
 cd C:\Users\你的名字\Desktop\settlement-app-main
 ```
-
-> 若是用 Git clone 下載，資料夾名稱為 `settlement-app`（沒有 `-main`）
 
 然後執行以下兩行（逐行貼上，等每行跑完再貼下一行）：
 
