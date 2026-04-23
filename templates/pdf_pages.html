@@ -223,6 +223,7 @@
     <table style="font-size:10px;">
       <thead><tr>
         <th>選手報名費</th><th>加價購</th><th>郵寄費</th><th>溢繳金額</th>
+        {% if settlement.method2.discount_total != 0 %}<th>{{ settlement.method2.discount_label or '折扣優惠' }}</th>{% endif %}
         <th>信用卡手續費</th><th>服務費</th><th>前次結算</th><th>結算金額</th>
       </tr></thead>
       <tbody><tr class="total-row">
@@ -230,6 +231,7 @@
         <td class="text-right">{{ "{:,}".format(settlement.method2.addon_fee | int) }}</td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.postal | int) }}</td>
         <td class="text-right">{{ "{:,}".format(settlement.method2.overpaid | int) }}</td>
+        {% if settlement.method2.discount_total != 0 %}<td class="text-right">{{ deduct(-settlement.method2.discount_total) }}</td>{% endif %}
         <td class="text-right">{{ deduct(settlement.method2.cc_fee) }}</td>
         <td class="text-right">{{ deduct(settlement.timing_total) }}</td>
         <td class="text-right">{{ deduct(settlement.method2.prev_total) }}</td>

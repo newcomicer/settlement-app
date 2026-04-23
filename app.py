@@ -82,6 +82,11 @@ def parse_excel(filepath):
     credit_card_col = next((i for i, h in enumerate(headers)
                             if h and '信用卡' in str(h) and ('刷卡' in str(h) or '線上' in str(h))), None)
 
+    # ── 折扣欄偵測（XX折優惠、折扣金額等）──
+    discount_cols = [i for i, h in enumerate(headers)
+                     if h and '折' in str(h) and '金額' in str(h) and ('優惠' in str(h) or '折扣' in str(h))]
+    discount_label = str(headers[discount_cols[0]]).replace('總金額','').strip() if discount_cols else ''
+
     if totals_row:
         actual_paid      = safe_num(totals_row[paid_col])
         postal           = sum(safe_num(totals_row[c]) for c in postal_cols)
@@ -91,10 +96,11 @@ def parse_excel(filepath):
         atm_fee          = sum(safe_num(totals_row[c]) for c in atm_cols)
         cvs_fee          = sum(safe_num(totals_row[c]) for c in cvs_cols)
         credit_card_total= safe_num(totals_row[credit_card_col]) if credit_card_col  else 0
+        discount_total   = sum(safe_num(totals_row[c]) for c in discount_cols)
     else:
         # 逐訂單加總（每筆訂單只取第一列，避免重複）
         seen = set()
-        actual_paid = postal = chip_deposit = refund_fee = downgrade = atm_fee = cvs_fee = credit_card_total = 0
+        actual_paid = postal = chip_deposit = refund_fee = downgrade = atm_fee = cvs_fee = credit_card_total = discount_total = 0
         for row in data_rows:
             oid = row[order_col]
             if oid and oid not in seen:
@@ -104,9 +110,10 @@ def parse_excel(filepath):
                 if chip_col:         chip_deposit       += safe_num(row[chip_col])
                 if refund_col:       refund_fee         += safe_num(row[refund_col])
                 if downgrade_col:    downgrade          += safe_num(row[downgrade_col])
-                for c in atm_cols: atm_fee            += safe_num(row[c])
-                for c in cvs_cols: cvs_fee            += safe_num(row[c])
-                if credit_card_col: credit_card_total += safe_num(row[credit_card_col])
+                for c in atm_cols:   atm_fee           += safe_num(row[c])
+                for c in cvs_cols:   cvs_fee           += safe_num(row[c])
+                if credit_card_col:  credit_card_total += safe_num(row[credit_card_col])
+                for c in discount_cols: discount_total += safe_num(row[c])
 
     # ── 組別人數：動態偵測 ──
     event_col = colidx('參與項目')
@@ -154,9 +161,13 @@ def parse_excel(filepath):
                 pr_counts[event] += 1
 
     # ── 加購數量：動態偵測，直接加總所有列（加購是每人獨立的）──
+    # 偵測條件：含「加購」或「加價購」的總數量欄，或任何有對應 XXX總金額 欄的 XXX總數量 欄
     addon_qty_cols = [
         (i, h) for i, h in enumerate(headers)
-        if h and ('加購' in str(h) or '加價購' in str(h)) and '總數量' in str(h)
+        if h and '總數量' in str(h) and (
+            '加購' in str(h) or '加價購' in str(h) or
+            any(h2 and str(h2) == str(h).replace('總數量', '總金額') for h2 in headers)
+        )
     ]
     # 同時找對應的金額欄，用來推算單價
     # 優先用不含「訂單」的金額欄（逐列金額），備援才用訂單總金額（常為 None）
@@ -253,6 +264,8 @@ def parse_excel(filepath):
             'atm_fee':           int(atm_fee),
             'cvs_fee':           int(cvs_fee),
             'credit_card_total': int(credit_card_total),
+            'discount_total':    int(discount_total),
+            'discount_label':    discount_label,
         },
         'has_totals_row': totals_row is not None,
     }
@@ -321,8 +334,9 @@ def calculate_settlement(data):
     chip     = -chip_deposit_val
     method1_total = fin['actual_paid'] + atm_fee + cvs_fee + refund + chip - credit_card_fee - timing_total - prev_total
 
-    # 方式二
-    method2_total = reg_fee + addon_fee + fin.get('postal', 0) + manual.get('overpaid', 0) - credit_card_fee - timing_total - prev_total
+    # 方式二（含折扣，discount_total 本身為負值）
+    discount_total = fin.get('discount_total', 0)
+    method2_total = reg_fee + addon_fee + fin.get('postal', 0) + manual.get('overpaid', 0) + discount_total - credit_card_fee - timing_total - prev_total
 
     # 最終請款金額（扣除公關晶片押金）
     final_amount = method1_total - pr_chip_deposit
@@ -366,13 +380,15 @@ def calculate_settlement(data):
             'total':        method1_total,
         },
         'method2': {
-            'reg_fee':    reg_fee,
-            'addon_fee':  addon_fee,
-            'postal':     fin.get('postal', 0),
-            'overpaid':   manual.get('overpaid', 0),
-            'cc_fee':     credit_card_fee,
-            'prev_total': prev_total,
-            'total':      method2_total,
+            'reg_fee':       reg_fee,
+            'addon_fee':     addon_fee,
+            'postal':        fin.get('postal', 0),
+            'overpaid':      manual.get('overpaid', 0),
+            'discount_total': discount_total,
+            'discount_label': fin.get('discount_label', ''),
+            'cc_fee':        credit_card_fee,
+            'prev_total':    prev_total,
+            'total':         method2_total,
         },
         'timing_breakdown': timing_breakdown,
         'timing_subtotal':  timing_subtotal,
