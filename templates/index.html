@@ -896,7 +896,7 @@ function recalculate() {
   // ── 異常警示：方式一/二差距過大 ──
   const warnEl = document.getElementById('mismatch-warning');
   const diff = Math.abs(m1_total - m2_total);
-  const threshold = Math.max(1000, Math.abs(m1_total) * 0.01);
+  const threshold = 100; // 差距超過 100 元即顯示提示
   if (warnEl) {
     if (diff > threshold && (m1_total !== 0 || m2_total !== 0)) {
       warnEl.style.display = 'block';

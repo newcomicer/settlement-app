@@ -160,6 +160,16 @@ def parse_excel(filepath):
             if event in pr_counts and any(k in otype for k in REG_PR_KEYWORDS):
                 pr_counts[event] += 1
 
+    # ── 有付費的訂單 ID 集合（用於區分「真正公關」vs「多人訂單內含成員」）──
+    # 親子組等多人訂單中，孩子的報名項目費用為空，但不算公關
+    # 只要同一訂單內有任何人付費，該訂單的空費成員就不計為公關
+    paid_order_ids = set()
+    if fee_col_pr is not None:
+        for row in data_rows:
+            oid = row[order_col]
+            if oid and row[fee_col_pr] is not None and safe_num(row[fee_col_pr]) > 0:
+                paid_order_ids.add(oid)
+
     # ── 加購數量：動態偵測，直接加總所有列（加購是每人獨立的）──
     # 偵測條件：含「加購」或「加價購」的總數量欄，或任何有對應 XXX總金額 欄的 XXX總數量 欄
     addon_qty_cols = [
@@ -199,10 +209,12 @@ def parse_excel(filepath):
         addons[name] = int(total_qty)
 
         # 公關加購數量：報名項目費用為空 且 非「需付加價購」類型
+        # 且訂單中沒有任何付費成員（排除親子組等多人訂單中的附帶成員）
         if fee_col_pr is not None:
             pr_qty = sum(
                 safe_num(row[i]) for row in data_rows
                 if row[fee_col_pr] is None
+                and row[order_col] not in paid_order_ids
                 and ADDON_PAID_KEYWORD not in str(row[type_col] or '' if type_col is not None else '')
             )
             if pr_qty > 0:
