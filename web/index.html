@@ -574,6 +574,8 @@ async function uploadExcel(file) {
   state.addons            = data.addons            || {};
   state.financials        = data.financials        || {};
   state.reg_prices_auto   = data.reg_prices_auto   || {};
+  state.reg_fee_by_group  = data.reg_fee_by_group  || {};
+  state.reg_paid_count    = data.reg_paid_count    || {};
   state.addon_prices_auto = data.addon_prices_auto || {};
   state.addon_pr_auto     = data.addon_pr_auto     || {};
   state.regOrder          = Object.keys(state.registration);
@@ -854,14 +856,17 @@ function recalculate() {
   const pr     = m.pr_overrides;
 
   // Reg fee（依 regOrder 排序）
+  // 優先使用 Excel 逐列加總的報名費（正確處理親子組等特殊計費）
+  const hasDirectFee = Object.keys(state.reg_fee_by_group || {}).length > 0;
   let regFee = 0;
   const regRows = [];
   let totalCount = 0;
   const regOrder = state.regOrder.length ? state.regOrder : Object.keys(reg);
   for (const k of regOrder) {
-    const fee = (reg[k] - (pr[k]||0)) * (m.reg_prices[k]||0);
+    const paidCount = state.reg_paid_count?.[k] || (reg[k] - (pr[k]||0));
+    const fee = hasDirectFee ? (state.reg_fee_by_group[k] || 0) : (reg[k] - (pr[k]||0)) * (m.reg_prices[k]||0);
     regFee += fee; totalCount += reg[k];
-    regRows.push({ name:k, count:reg[k], pr:pr[k]||0, price:m.reg_prices[k]||0, total:fee });
+    regRows.push({ name:k, count:reg[k], pr:pr[k]||0, paid: paidCount, price:m.reg_prices[k]||0, total:fee });
   }
 
   // Addon fee（依 addonOrder 排序）
@@ -1027,11 +1032,11 @@ function recalculate() {
      <td><span class="drag-handle">⠿</span>${r.name}</td>
      <td class="text-center">${fmt(r.count)}</td>
      <td class="text-center">${fmt(r.pr)}</td>
-     <td class="text-center">${fmt(r.count-r.pr)}</td>
+     <td class="text-center">${fmt(r.paid)}</td>
      <td class="text-right">${fmt(r.price)}</td>
      <td class="text-right">${fmt(r.total)}</td></tr>`).join('');
   const totalPr      = regRows.reduce((s, r) => s + r.pr, 0);
-  const totalBilling = regRows.reduce((s, r) => s + (r.count - r.pr), 0);
+  const totalBilling = regRows.reduce((s, r) => s + r.paid, 0);
   document.getElementById('reg_count').textContent       = fmt(totalCount);
   document.getElementById('reg_pr_ttl').textContent      = fmt(totalPr);
   document.getElementById('reg_billing_ttl').textContent = fmt(totalBilling);

@@ -184,28 +184,59 @@ function parseExcel(workbook, filename) {
   const ADDON_PAID_KEYWORD = '需付加價購';
   const REG_PR_KEYWORDS = ['全免費', '免報名費', '公關', '贊助', 'VIP免費'];
 
+  // ── 有付費的訂單 ID 集合（用於排除親子組誤判）──
+  const paidOrderIds = new Set();
+  if (feeColPr >= 0) {
+    for (const row of dataRows) {
+      const oid = row[orderCol];
+      if (oid && row[feeColPr] != null && safeNum(row[feeColPr]) > 0) {
+        paidOrderIds.add(oid);
+      }
+    }
+  }
+
   // 優先從「免費名單」工作表
   const freeSheetName = workbook.SheetNames.find(n => n === '免費名單');
   if (freeSheetName) {
     const wsFree = workbook.Sheets[freeSheetName];
     const freeRows = XLSX.utils.sheet_to_json(wsFree, { header: 1, defval: null });
-    if (freeRows.length > 1) {
-      const freeHeaders = freeRows[0];
-      const freeEventCol = freeHeaders.findIndex(h => h && String(h).includes('參與項目'));
+    const freeHeaders = freeRows.length > 0 ? freeRows[0] : [];
+    const freeEventCol = freeHeaders.findIndex(h => h && String(h).includes('參與項目'));
+    if (freeRows.length > 1 && freeEventCol >= 0) {
+      for (let i = 1; i < freeRows.length; i++) {
+        if (freeRows[i][0] != null) {
+          const e = freeRows[i][freeEventCol] != null ? String(freeRows[i][freeEventCol]) : null;
+          if (e && e in prCounts) prCounts[e]++;
+        }
+      }
+    }
+    // 免費名單可能漏掉親子組公關（fee=null、訂單無付費成員、且非免費名單已列的人）
+    if (feeColPr >= 0) {
+      const freeCountByEvent = {};
       if (freeEventCol >= 0) {
         for (let i = 1; i < freeRows.length; i++) {
           if (freeRows[i][0] != null) {
-            const e = freeRows[i][freeEventCol] != null ? String(freeRows[i][freeEventCol]) : null;
-            if (e && e in prCounts) prCounts[e]++;
+            const e = freeRows[i][freeEventCol] != null ? String(freeRows[i][freeEventCol]) : '';
+            freeCountByEvent[e] = (freeCountByEvent[e] || 0) + 1;
+          }
+        }
+      }
+      for (const row of dataRows) {
+        const event = row[eventCol] != null ? String(row[eventCol]) : '';
+        if (event in prCounts && row[feeColPr] == null && !paidOrderIds.has(row[orderCol])) {
+          if ((freeCountByEvent[event] || 0) > 0) {
+            freeCountByEvent[event]--;
+          } else {
+            prCounts[event]++;
           }
         }
       }
     }
   } else if (feeColPr >= 0) {
-    // 報名項目費用為空 → 公關
+    // 無免費名單：fee=null 且訂單無付費成員 → 公關
     for (const row of dataRows) {
       const event = row[eventCol] != null ? String(row[eventCol]) : '';
-      if (event in prCounts && row[feeColPr] == null) {
+      if (event in prCounts && row[feeColPr] == null && !paidOrderIds.has(row[orderCol])) {
         prCounts[event]++;
       }
     }
@@ -216,17 +247,6 @@ function parseExcel(workbook, filename) {
       const event = row[eventCol] != null ? String(row[eventCol]) : '';
       if (event in prCounts && REG_PR_KEYWORDS.some(k => otype.includes(k))) {
         prCounts[event]++;
-      }
-    }
-  }
-
-  // ── 有付費的訂單 ID 集合（排除親子組誤判）──
-  const paidOrderIds = new Set();
-  if (feeColPr >= 0) {
-    for (const row of dataRows) {
-      const oid = row[orderCol];
-      if (oid && row[feeColPr] != null && safeNum(row[feeColPr]) > 0) {
-        paidOrderIds.add(oid);
       }
     }
   }
@@ -315,21 +335,29 @@ function parseExcel(workbook, filename) {
     }
   }
 
-  // ── 組別單價：從報名項目費用推算最常見金額 ──
+  // ── 組別單價 + 報名費逐列加總 + 繳費人數 ──
   const regPricesAuto = {};
+  const regFeeByGroup = {};
+  const regPaidCount = {};
   const feeCol = colidx('報名項目費用');
   if (feeCol >= 0) {
     for (const k of Object.keys(registration)) {
       const priceCount = {};
+      let feeSum = 0;
+      let paidCnt = 0;
       for (const row of dataRows) {
         if (String(row[eventCol] || '') !== k) continue;
         if (row[feeCol] == null) continue;
         const fee = safeNum(row[feeCol]);
         if (fee > 0) {
+          feeSum += fee;
+          paidCnt++;
           const intFee = Math.round(fee);
           priceCount[intFee] = (priceCount[intFee] || 0) + 1;
         }
       }
+      regFeeByGroup[k] = Math.round(feeSum);
+      regPaidCount[k] = paidCnt;
       const entries = Object.entries(priceCount);
       if (entries.length > 0) {
         entries.sort((a, b) => b[1] - a[1]);
@@ -346,6 +374,8 @@ function parseExcel(workbook, filename) {
     pr_counts: prCounts,
     addons,
     reg_prices_auto: regPricesAuto,
+    reg_fee_by_group: regFeeByGroup,
+    reg_paid_count: regPaidCount,
     addon_prices_auto: addonPricesAuto,
     addon_pr_auto: addonPrAuto,
     financials: {
