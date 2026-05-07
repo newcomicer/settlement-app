@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>筆記報名 經費結算系統</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="js/excel-parser.js"></script>
+<style>
+  body { font-family: 'Noto Sans TC','PingFang TC',sans-serif; }
+  .drop-active { border-color:#3b82f6!important; background:#eff6ff!important; }
+  .ni { width:100%; padding:4px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; }
+  .ni:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.2); }
+  .ni-r { text-align:right; }
+  .upload-zone { border:2px dashed #d1d5db; border-radius:10px; padding:20px; text-align:center; cursor:pointer; transition:all .2s; }
+  .upload-zone:hover { border-color:#3b82f6; background:#f0f9ff; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .preview-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .preview-table th { background:#003CAA; color:white; padding:6px 8px; text-align:center; }
+  .preview-table td { padding:5px 8px; border-bottom:1px solid #e5e7eb; }
+  .preview-table tr:nth-child(even) td { background:#f8fafc; }
+  .total-row td { background:#e8eef8!important; font-weight:700; }
+  .method-box { border:1px solid #dde3ef; border-radius:6px; overflow:hidden; margin-bottom:10px; }
+  .method-hdr { background:#003CAA; color:white; padding:6px 12px; font-size:11px; font-weight:700; }
+  .result-amount { font-size:22px; font-weight:900; color:#003CAA; }
+  .lbl { font-size:11px; color:#6b7280; display:block; margin-bottom:2px; }
+  .del-btn { color:#ef4444; cursor:pointer; padding:2px 4px; border-radius:4px; }
+  .del-btn:hover { background:#fee2e2; }
+  .add-btn { font-size:12px; color:#3b82f6; cursor:pointer; display:flex; align-items:center; gap:4px; padding:4px 0; }
+  .add-btn:hover { color:#1d4ed8; }
+  /* Accordion */
+  .acc-hdr { display:flex; align-items:center; justify-content:space-between;
+    background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;
+    padding:7px 10px; cursor:pointer; user-select:none; margin-bottom:2px; }
+  .acc-hdr:hover { background:#e8eef8; border-color:#a3b8e0; }
+  .acc-hdr .acc-title { font-size:12px; font-weight:700; color:#374151; display:flex; align-items:center; gap:6px; }
+  .acc-hdr .acc-arrow { transition:transform .2s; color:#9ca3af; font-size:10px; }
+  .acc-hdr.open .acc-arrow { transform:rotate(180deg); }
+  .acc-body { overflow:hidden; transition:max-height .25s ease, opacity .2s; max-height:0; opacity:0; }
+  .acc-body.open { max-height:600px; opacity:1; }
+  .acc-body-inner { padding:8px 4px 4px; }
+  /* Tooltip */
+  .tip-wrap { position:relative; display:inline-flex; align-items:center; gap:3px; }
+  .tip-icon { font-size:10px; color:#93c5fd; cursor:default; flex-shrink:0; }
+  .tip-icon:hover { color:#fff; }
+  #tip-float {
+    display:none; position:fixed; pointer-events:none; z-index:9999;
+    background:#1e293b; color:#f1f5f9; font-size:11px;
+    padding:7px 10px; border-radius:6px; width:220px;
+    box-shadow:0 4px 14px rgba(0,0,0,.45); line-height:1.6;
+  }
+  .tip-icon:hover + .tip-box, .tip-wrap:hover .tip-box { display:block; }
+  /* Row drag-and-drop */
+  tr[draggable="true"] { cursor: grab; }
+  tr[draggable="true"]:active { cursor: grabbing; }
+  tr[draggable="true"].drag-over td { background: #dbeafe !important; outline: 2px dashed #3b82f6; outline-offset: -1px; }
+  tr[draggable="true"].drag-src td { opacity: 0.4; }
+  .drag-handle { color: #cbd5e1; font-size: 13px; margin-right: 4px; user-select: none; }
+  tr[draggable="true"]:hover .drag-handle { color: #6b7280; }
+  /* Toast */
+  #toast-container { position:fixed; top:60px; right:16px; z-index:10000; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+  .toast-item { pointer-events:all; display:flex; align-items:flex-start; gap:8px; padding:10px 14px;
+    border-radius:8px; font-size:12px; line-height:1.5; max-width:320px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18); animation:slideIn .2s ease; }
+  .toast-item.error   { background:#fef2f2; border:1px solid #fca5a5; color:#991b1b; }
+  .toast-item.warning { background:#fffbeb; border:1px solid #fcd34d; color:#92400e; }
+  .toast-item.success { background:#f0fdf4; border:1px solid #86efac; color:#166534; }
+  .toast-item .toast-close { margin-left:auto; cursor:pointer; opacity:.6; flex-shrink:0; font-size:13px; line-height:1; padding:0 2px; }
+  .toast-item .toast-close:hover { opacity:1; }
+  @keyframes slideIn { from { transform:translateX(30px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+  /* Mismatch warning */
+  #mismatch-warning { display:none; background:#fffbeb; border:1px solid #f59e0b; color:#92400e;
+    font-size:12px; border-radius:8px; padding:8px 12px; margin-bottom:8px; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div id="tip-float"></div>
+<div id="toast-container"></div>
+
+<!-- Top bar -->
+<div class="bg-[#003CAA] text-white px-6 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <!-- 筆記報名 N Logo -->
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="28" height="28" rx="4" fill="white"/>
+      <path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="#003CAA"/>
+    </svg>
+    <div class="leading-tight">
+      <div class="text-base font-black tracking-wide">筆記報名</div>
+      <div class="text-xs text-blue-200 -mt-0.5">經費結算系統 <span class="opacity-60">v2.0.0-dev</span></div>
+    </div>
+    <span class="badge bg-white text-[#003CAA]" id="status-badge">等待上傳</span>
+  </div>
+  <button id="btn-pdf" onclick="generatePDF()"
+    class="bg-white text-[#003CAA] font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center gap-2"
+    disabled>
+    <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF
+  </button>
+</div>
+
+<div class="flex h-[calc(100vh-52px)]">
+
+<!-- ═══ LEFT PANEL ═══ -->
+<div class="w-[340px] flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200 p-3 space-y-2">
+
+  <!-- Excel Upload -->
+  <div id="drop-zone" class="upload-zone" onclick="document.getElementById('excel-input').click()">
+    <div id="drop-text" style="pointer-events:none;">
+      <i data-lucide="file-spreadsheet" class="w-6 h-6 mx-auto text-gray-400 mb-1"></i>
+      <p class="text-sm text-gray-500">拖拉或點擊上傳 Excel</p>
+    </div>
+  </div>
+  <input type="file" id="excel-input" accept=".xlsx,.xls" class="hidden" onchange="uploadExcel(this.files[0])">
+
+  <!-- ══ Group 1：承辦設定 ══ -->
+  <div class="rounded-xl border border-blue-100 bg-blue-50/30 p-2 space-y-1.5">
+    <p class="text-[10px] font-bold text-[#003CAA] tracking-widest px-1">📁 承辦設定</p>
+
+    <!-- 基本資訊 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">📋 基本資訊</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner space-y-2">
+        <div><span class="lbl">活動名稱</span><input type="text" id="event_name" class="ni" placeholder="活動名稱" oninput="recalculate()"></div>
+        <div><span class="lbl">請款日期</span><input type="date" id="payment_date" class="ni" onchange="recalculate()"></div>
+        <div><span class="lbl">承辦人姓名</span><input type="text" id="contact_name" class="ni" placeholder="王小明" oninput="recalculate()"></div>
+        <div><span class="lbl">聯絡方式</span><input type="text" id="contact_info" class="ni" placeholder="02-1234-5678 / line@xxx" oninput="recalculate()"></div>
+      </div>
+    </div>
+
+    <!-- 匯款帳戶 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">🏦 匯款帳戶</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner space-y-2">
+        <div><span class="lbl">銀行名稱＋代號</span><input type="text" id="bank_name" class="ni" placeholder="合作金庫 006"></div>
+        <div><span class="lbl">分行名稱＋代號</span><input type="text" id="bank_branch" class="ni" placeholder="永安分行 1715"></div>
+        <div><span class="lbl">帳號</span><input type="text" id="bank_account" class="ni"></div>
+        <div><span class="lbl">戶名</span><input type="text" id="bank_holder" class="ni"></div>
+      </div>
+    </div>
+
+    <!-- 服務費 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">⏱ 服務費項目</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner">
+        <div id="timing-items" class="space-y-1 mb-1"></div>
+        <div class="add-btn" onclick="addTimingItem()">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> 新增項目
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定檔按鈕（Group 底部） -->
+    <div class="flex gap-2 pt-1.5 border-t border-blue-100">
+      <button onclick="saveTimingPreset()"
+        class="flex-1 flex items-center justify-center gap-1 text-xs text-[#003CAA] bg-white hover:bg-blue-50 border border-blue-200 hover:border-[#003CAA] rounded-md px-2 py-2 transition-colors font-medium"
+        data-tip="儲存「承辦人資訊」＋「匯款帳戶」＋「服務費項目」為 .json 設定檔，下次載入後直接使用，不需重新填寫。">
+        <i data-lucide="save" class="w-3.5 h-3.5"></i> 儲存設定檔
+      </button>
+      <button onclick="document.getElementById('preset-input').click()"
+        class="flex-1 flex items-center justify-center gap-1 text-xs text-[#003CAA] bg-white hover:bg-blue-50 border border-blue-200 hover:border-[#003CAA] rounded-md px-2 py-2 transition-colors font-medium"
+        data-tip="載入之前儲存的 .json 設定檔，自動填入「承辦人資訊」、「匯款帳戶」並重建「服務費項目」清單。">
+        <i data-lucide="folder-open" class="w-3.5 h-3.5"></i> 載入設定檔
+      </button>
+      <input type="file" id="preset-input" accept=".json" class="hidden" onchange="loadTimingPreset(this)">
+    </div>
+  </div>
+
+  <!-- ══ Group 2：費用資料 ══ -->
+  <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-2 space-y-1.5">
+    <p class="text-[10px] font-bold text-gray-400 tracking-widest px-1">📊 費用資料</p>
+
+    <!-- 費用驗算 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">💰 費用驗算</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner space-y-2">
+        <!-- 方式一 -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide pt-1">方式一</p>
+        <div class="space-y-1">
+          <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">ATM 手續費</span><input type="number" id="atm_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+          <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">超商手續費</span><input type="number" id="cvs_fee" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+          <div class="flex gap-2 items-center"><span class="lbl flex-1 mb-0">晶片押金</span><input type="number" id="chip_deposit" class="ni ni-r w-28" value="0" oninput="recalculate()"></div>
+        </div>
+        <!-- 方式二 -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">方式二</p>
+        <div class="space-y-1">
+          <div class="flex gap-2 items-center">
+            <span class="lbl flex-1 mb-0">溢繳金額 <span class="text-red-400 text-xs font-semibold">（後台）</span></span>
+            <input type="number" id="overpaid" class="ni ni-r w-28" value="0" oninput="recalculate()">
+          </div>
+        </div>
+        <!-- 退費 -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">退費處理</p>
+        <div class="space-y-1">
+          <div class="flex gap-1 items-center text-[11px]">
+            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="refund_handler" value="us" checked onchange="recalculate()"><span>我方退費</span></label>
+            <label class="flex items-center gap-1 cursor-pointer ml-2"><input type="radio" name="refund_handler" value="client" onchange="recalculate()"><span>客戶退費</span></label>
+          </div>
+          <div id="refund_fields" style="display:none" class="space-y-1">
+            <div class="flex gap-2 items-center">
+              <span class="tip-wrap lbl flex-1 mb-0">方式一退費<span class="tip-icon" data-tip="退費選手的原始報名費金額（理論值）">ⓘ</span></span>
+              <input type="number" id="refund_m1" class="ni ni-r w-28" value="0" oninput="recalculate()">
+            </div>
+            <div class="flex gap-2 items-center">
+              <span class="tip-wrap lbl flex-1 mb-0">方式二退費<span class="tip-icon" data-tip="退費選手實際退回的金額（扣手續費/折扣後）">ⓘ</span></span>
+              <input type="number" id="refund_m2" class="ni ni-r w-28" value="0" oninput="recalculate()">
+            </div>
+          </div>
+        </div>
+
+        <!-- 共同扣除（方式一、二皆扣） -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">共同扣除</p>
+        <div class="space-y-1">
+          <div class="flex gap-2 items-center">
+            <span class="tip-wrap lbl flex-1 mb-0">信用卡手續費
+              <span class="tip-icon" data-tip="Excel「信用卡線上刷卡總金額」× 3%，方式一、二均扣除。上傳 Excel 後自動帶入，可手動調整。">ⓘ</span>
+            </span>
+            <input type="number" id="credit_card_fee" class="ni ni-r w-28" value="0" oninput="recalculate()">
+          </div>
+        </div>
+        <!-- 前次結算（方式一、二共用） -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">前次結算扣除</p>
+        <div id="prev-items" class="space-y-1"></div>
+        <div class="add-btn" onclick="addPrevSettlement()">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> 新增前次結算
+        </div>
+
+        <!-- 公關晶片押金（最終結算用） -->
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-wide border-t border-gray-100 pt-2 mt-1">最終結算</p>
+        <div class="flex gap-2 items-center">
+          <span class="tip-wrap lbl flex-1 mb-0">公關晶片押金
+            <span class="tip-icon" data-tip="公關選手晶片押金，不在實繳金額內，最終結算時需另行扣除">ⓘ</span>
+          </span>
+          <input type="number" id="pr_chip_deposit" class="ni ni-r w-28" value="0" oninput="recalculate()">
+        </div>
+      </div>
+    </div>
+
+    <!-- 報名費收入 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">🏅 報名費收入</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner">
+        <div id="reg-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入</p></div>
+      </div>
+    </div>
+
+    <!-- 公關人數 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">🎟 公關人數</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner">
+        <div id="pr-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入（可手動調整）</p></div>
+      </div>
+    </div>
+
+    <!-- 加價購收入 -->
+    <div class="acc-hdr" onclick="toggleAcc(this)">
+      <span class="acc-title">🛍 加價購收入</span>
+      <span class="acc-arrow">▼</span>
+    </div>
+    <div class="acc-body">
+      <div class="acc-body-inner">
+        <div id="addon-groups"><p class="text-xs text-gray-400">上傳 Excel 後自動帶入</p></div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- end left -->
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<div class="flex-1 overflow-y-auto p-5 bg-gray-50">
+<div class="max-w-3xl mx-auto space-y-4">
+
+  <div id="placeholder" class="flex flex-col items-center justify-center h-64 text-gray-300">
+    <i data-lucide="file-text" class="w-14 h-14 mb-3"></i>
+    <p class="text-lg">上傳 Excel 後自動顯示結算預覽</p>
+  </div>
+
+  <div id="preview" class="hidden space-y-4">
+
+    <!-- P1 -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="badge bg-[#003CAA] text-white">第1頁</span>
+        <h2 class="font-bold text-gray-700 text-sm">匯款申請表</h2>
+      </div>
+      <table class="preview-table">
+        <thead><tr><th>請款日期</th><th>匯款原因</th><th>金額</th><th>銀行</th><th>分行</th><th>帳號</th><th>戶名</th></tr></thead>
+        <tbody><tr>
+          <td id="p1_date" class="text-center">—</td>
+          <td id="p1_reason">—</td>
+          <td id="p1_amount" class="text-right font-bold text-[#003CAA]">—</td>
+          <td id="p1_bank">—</td>
+          <td id="p1_branch">—</td>
+          <td id="p1_account">—</td>
+          <td id="p1_holder">—</td>
+        </tr></tbody>
+      </table>
+      <p class="text-xs text-gray-400 mt-1.5">承辦人：<span id="p1_contact" class="text-gray-600">—</span></p>
+      <p class="text-xs text-gray-400 mt-0.5">📄 資料來源：<span id="p1_excel" class="font-mono text-gray-500">—</span></p>
+    </div>
+
+    <!-- P2 -->
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="badge bg-[#828282] text-white">第2頁</span>
+          <h2 class="font-bold text-gray-700 text-sm">經費結算明細</h2>
+        </div>
+        <p class="text-xs text-gray-400">📄 <span id="p2_excel" class="font-mono">—</span></p>
+      </div>
+
+      <!-- Reg breakdown -->
+      <p class="text-xs font-bold text-gray-500 mb-1">報名人數明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>組別</th><th>總人數</th><th>公關</th><th>繳費人數</th><th>單價</th><th>小計</th></tr></thead>
+        <tbody id="reg-tbody"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td>合計</td>
+            <td id="reg_count" class="text-center">—</td>
+            <td id="reg_pr_ttl" class="text-center">—</td>
+            <td id="reg_billing_ttl" class="text-center">—</td>
+            <td></td>
+            <td id="reg_fee_ttl" class="text-right">—</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Addon breakdown -->
+      <p class="text-xs font-bold text-gray-500 mb-1">加價購明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>項目</th><th>數量</th><th>公關</th><th>計費</th><th>單價</th><th>小計</th></tr></thead>
+        <tbody id="addon-tbody"></tbody>
+        <tfoot>
+          <tr class="total-row"><td colspan="5" class="text-right">合計</td><td id="addon_ttl" class="text-right">—</td></tr>
+        </tfoot>
+      </table>
+
+      <!-- Timing -->
+      <p class="text-xs font-bold text-gray-500 mb-1">服務費明細</p>
+      <table class="preview-table mb-4">
+        <thead><tr><th>項目</th><th>數量／基數</th><th>單價／費率</th><th>小計</th></tr></thead>
+        <tbody id="timing-tbody"></tbody>
+        <tfoot>
+          <tr><td colspan="3" class="text-right text-xs text-gray-400">小計（未稅）</td><td id="timing_sub" class="text-right font-semibold">—</td></tr>
+          <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td id="timing_ttl" class="text-right text-[#003CAA]">—</td></tr>
+        </tfoot>
+      </table>
+
+      <!-- Method 1 + 2 並排 -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+
+        <!-- Method 1 -->
+        <div class="method-box mb-0">
+          <div class="method-hdr">方式一：實際收支結算</div>
+          <div class="px-3 py-3 space-y-1.5 text-sm">
+            <div class="flex justify-between items-center">
+              <span class="tip-wrap text-gray-700">選手繳費<span class="tip-icon" data-tip="Excel「實繳金額」欄位加總（已扣除退費與手續費）">ⓘ</span></span>
+              <span id="m1_paid" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− ATM 手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「ATM虛擬帳號手續費」欄">ⓘ</span></span>
+              <span id="m1_atm" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 超商手續費<span class="tip-icon" data-tip="左側手動輸入。參考 Excel「超商繳款手續費」欄">ⓘ</span></span>
+              <span id="m1_cvs" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，由左側費用驗算帶入">ⓘ</span></span>
+              <span id="m1_cc" class="tabular-nums">—</span>
+            </div>
+            <div id="m1_refund_row" class="flex justify-between items-center text-gray-500 text-xs pl-3" style="display:none">
+              <span class="tip-wrap"><span id="m1_refund_label">+ 選手退費</span><span class="tip-icon" data-tip="客戶自行退費時，退費金額加回結算（左側手動輸入）">ⓘ</span></span>
+              <span id="m1_refund" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 晶片押金<span class="tip-icon" data-tip="左側手動輸入。若 Excel 有「晶片押金訂單總金額」欄則自動帶入">ⓘ</span></span>
+              <span id="m1_chip" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span>
+              <span id="m1_timing" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span>
+              <span id="m1_prev" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-200 pt-2 mt-1">
+              <span class="tip-wrap font-bold text-gray-700">結算金額<span class="tip-icon" data-tip="選手繳費 − ATM − 超商 − 信用卡手續費 − 退費 − 晶片押金 − 服務費 − 前次結算">ⓘ</span></span>
+              <span id="m1_total" class="font-bold text-[#003CAA] tabular-nums">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Method 2 -->
+        <div class="method-box mb-0">
+          <div class="method-hdr">方式二：費用明細結算</div>
+          <div class="px-3 py-3 space-y-1.5 text-sm">
+            <div class="flex justify-between items-center">
+              <span class="tip-wrap text-gray-700">選手報名費<span class="tip-icon" data-tip="各組（總人數 − 公關）× 單價 加總">ⓘ</span></span>
+              <span id="m2_reg" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">+ 加價購<span class="tip-icon" data-tip="各加購項目（數量 − 公關）× 單價 加總">ⓘ</span></span>
+              <span id="m2_addon" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">+ 郵寄費<span class="tip-icon" data-tip="Excel「郵寄報到」或「郵寄費用」金額欄加總">ⓘ</span></span>
+              <span id="m2_postal" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">+ 溢繳金額<span class="tip-icon" data-tip="左側手動輸入">ⓘ</span></span>
+              <span id="m2_overpaid" class="tabular-nums">—</span>
+            </div>
+            <div id="m2_discount_row" style="display:none">
+              <div class="flex justify-between items-center text-gray-500 text-xs pl-3 cursor-pointer" onclick="toggleDiscountDetail()">
+                <span class="tip-wrap"><span id="m2_discount_label">折扣優惠</span><span class="tip-icon" data-tip="Excel 中的折扣/優惠金額，點擊展開明細">ⓘ</span><span id="m2_discount_arrow" class="text-[9px] text-gray-400 ml-1">▶</span></span>
+                <span id="m2_discount" class="tabular-nums">—</span>
+              </div>
+              <div id="m2_discount_detail" class="pl-6 text-[11px] text-gray-400 space-y-0.5" style="display:none"></div>
+            </div>
+            <div id="m2_refund_row" class="flex justify-between items-center text-gray-500 text-xs pl-3" style="display:none">
+              <span class="tip-wrap"><span id="m2_refund_label">+ 選手退費</span><span class="tip-icon" data-tip="客戶自行退費時，退費金額加回結算（左側手動輸入）">ⓘ</span></span>
+              <span id="m2_refund" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 信用卡手續費<span class="tip-icon" data-tip="信用卡線上刷卡總金額 × 3%，與方式一共用同一數值">ⓘ</span></span>
+              <span id="m2_cc" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 服務費<span class="tip-icon" data-tip="左側服務費項目加總後含稅 5%">ⓘ</span></span>
+              <span id="m2_timing" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center text-gray-500 text-xs pl-3">
+              <span class="tip-wrap">− 前次結算<span class="tip-icon" data-tip="多期結算時，扣除已結算金額，避免重複請款">ⓘ</span></span>
+              <span id="m2_prev" class="tabular-nums">—</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-200 pt-2 mt-1">
+              <span class="tip-wrap font-bold text-gray-700">結算金額<span class="tip-icon" data-tip="報名費 + 加價購 + 郵寄費 + 溢繳金額 − 信用卡手續費 − 服務費 − 前次結算">ⓘ</span></span>
+              <span id="m2_total" class="font-bold text-[#003CAA] tabular-nums">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mismatch warning -->
+      <div id="mismatch-warning"></div>
+
+      <!-- Result -->
+      <div class="bg-[#e8eef8] rounded-lg p-3 space-y-2">
+        <div class="flex items-center justify-end gap-4">
+          <span class="text-sm text-gray-600 font-semibold">本次結算金額</span>
+          <span class="text-lg font-bold text-gray-700" id="result_amount">NT$ —</span>
+        </div>
+        <div id="pr-chip-row" class="flex items-center justify-end gap-4" style="display:none">
+          <span class="text-sm text-gray-500">扣：公關晶片押金</span>
+          <span class="text-sm font-semibold text-red-500" id="result_pr_chip">—</span>
+        </div>
+        <div id="final-row" class="flex items-center justify-end gap-4 border-t border-blue-200 pt-2" style="display:none">
+          <span class="text-sm text-gray-800 font-bold">實際請款金額</span>
+          <span class="result-amount" id="result_final">NT$ —</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end preview -->
+</div>
+</div><!-- end right -->
+</div>
+
+<script>
+// ── State ──
+const state = {
+  registration: {}, pr_counts: {}, addons: {},
+  financials: {},
+  timingItemId: 0,
+  prevItemId: 0,
+  excelFilename: '',
+  filenameInfo: {},
+  regOrder: [],
+  addonOrder: [],
+};
+
+lucide.createIcons();
+
+// ── Drag & Drop ──
+let dragCount = 0;
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragenter', e => { e.preventDefault(); dragCount++; dz.classList.add('drop-active'); });
+dz.addEventListener('dragleave', e => { e.preventDefault(); if(--dragCount===0) dz.classList.remove('drop-active'); });
+dz.addEventListener('dragover',  e => e.preventDefault());
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dragCount=0; dz.classList.remove('drop-active');
+  const f = e.dataTransfer.files[0]; if(f) uploadExcel(f);
+});
+
+// ── Helpers ──
+const fmt = n => (n===null||n===undefined) ? '—' : Number(n).toLocaleString('zh-TW');
+const fmtS = n => { const v=Number(n); return v<0 ? `<span class="text-red-500">-${fmt(-v)}</span>` : fmt(v); };
+
+// ── Toast notifications ──
+function showToast(msg, type='error', duration=0) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.innerHTML = `<span>${msg}</span><span class="toast-close" onclick="this.parentElement.remove()">✕</span>`;
+  container.appendChild(el);
+  if (duration > 0) setTimeout(() => el.remove(), duration);
+}
+
+// ── Excel Upload（前端解析，不上傳伺服器）──
+async function uploadExcel(file) {
+  if (!file?.name.match(/\.xlsx?$/i)) { showToast('請上傳 .xlsx 或 .xls 格式的 Excel 檔案'); return; }
+  const dt = document.getElementById('drop-text');
+  dt.innerHTML = '<p class="text-sm text-blue-600 font-semibold">解析中，請稍候...</p>';
+
+  let data;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    data = parseExcel(workbook, file.name);
+  } catch (err) {
+    dt.innerHTML = '<p class="text-sm text-red-500">❌ 解析失敗</p><p class="text-xs text-gray-400">點擊重新上傳</p>';
+    showToast(`Excel 讀取失敗：${err.message}`);
+    return;
+  }
+
+  if (data.error) {
+    dt.innerHTML = '<p class="text-sm text-red-500">❌ 解析失敗</p><p class="text-xs text-gray-400">點擊重新上傳</p>';
+    let hint = '';
+    if (data.error.includes('報名資料')) hint = '請確認是從 iRunner 後台「匯出報名資料」的 Excel，而非其他格式。';
+    else if (data.error.includes('參與項目')) hint = '此 Excel 缺少「參與項目」欄位，可能不是標準 iRunner 格式。';
+    else if (data.error.includes('資料列')) hint = 'Excel 中找不到有效的報名訂單，請確認工作表有實際資料。';
+    showToast(`❌ ${data.error}${hint ? '<br><span style="opacity:.8">💡 ' + hint + '</span>' : ''}`);
+    return;
+  }
+
+  // ── 自動帶入基本資訊 ──
+  const nameEl = document.getElementById('event_name');
+  if (!nameEl.value && data.filename_info?.eventName) {
+    nameEl.value = data.filename_info.eventName;
+  }
+  const dateEl = document.getElementById('payment_date');
+  if (!dateEl.value) {
+    dateEl.value = new Date().toISOString().slice(0, 10);
+  }
+
+  state.excelFilename     = file.name;
+  state.filenameInfo      = data.filename_info || {};
+  state.registration      = data.registration      || {};
+  state.pr_counts         = data.pr_counts         || {};
+  state.addons            = data.addons            || {};
+  state.financials        = data.financials        || {};
+  state.reg_prices_auto   = data.reg_prices_auto   || {};
+  state.addon_prices_auto = data.addon_prices_auto || {};
+  state.addon_pr_auto     = data.addon_pr_auto     || {};
+  state.regOrder          = Object.keys(state.registration);
+  state.addonOrder        = Object.keys(state.addons);
+
+  // Auto-fill financial fields
+  document.getElementById('atm_fee').value         = data.financials?.atm_fee      || 0;
+  document.getElementById('cvs_fee').value         = data.financials?.cvs_fee      || 0;
+  document.getElementById('chip_deposit').value    = data.financials?.chip_deposit || 0;
+  document.getElementById('credit_card_fee').value = Math.round((data.financials?.credit_card_total || 0) * 0.03);
+
+  renderDynamicFields();
+
+  // 顯示檔名 + 下載時間戳
+  const tsInfo = data.filename_info?.timestampFormatted ? ` (${data.filename_info.timestampFormatted})` : '';
+  dt.innerHTML = `<p class="text-sm text-green-600 font-semibold">✅ ${file.name}</p><p class="text-xs text-gray-400">${tsInfo ? '下載時間：' + data.filename_info.timestampFormatted + '　|　' : ''}點擊重新上傳</p>`;
+  document.getElementById('status-badge').textContent = '資料已載入';
+  document.getElementById('status-badge').className = 'badge bg-green-500 text-white';
+  document.getElementById('placeholder').classList.add('hidden');
+  document.getElementById('preview').classList.remove('hidden');
+  document.getElementById('btn-pdf').disabled = false;
+  recalculate();
+}
+
+// ── Render dynamic fields ──
+function renderDynamicFields() {
+  const reg = state.registration;
+  const pr  = state.pr_counts;
+  const addons = state.addons;
+
+  // Registration groups（自動帶入推算單價）
+  const regEl = document.getElementById('reg-groups');
+  regEl.innerHTML = Object.keys(reg).map(k => {
+    const autoPrice = state.reg_prices_auto[k] || 0;
+    return `
+    <div class="flex gap-1 items-center text-xs">
+      <span class="flex-1 truncate text-gray-700 font-medium" title="${k}">${k}</span>
+      <span class="text-gray-400 w-12 text-right">${fmt(reg[k])}人</span>
+      <input type="number" id="rp_${eid(k)}" class="ni ni-r w-20" value="${autoPrice}"
+        placeholder="單價" oninput="recalculate()" title="${k} 單價">
+    </div>`;
+  }).join('');
+
+  // Add-ons（自動帶入推算單價與公關數量）
+  const addonEl = document.getElementById('addon-groups');
+  if (Object.keys(addons).length === 0) {
+    addonEl.innerHTML = '<p class="text-xs text-gray-400">此活動無加價購項目</p>';
+  } else {
+    addonEl.innerHTML = Object.keys(addons).map(k => {
+      const autoPrice = state.addon_prices_auto[k] || 0;
+      const autoPr    = state.addon_pr_auto[k]     || 0;
+      return `
+      <div class="space-y-0.5 pb-1 border-b border-gray-100">
+        <div class="flex gap-1 items-center text-xs">
+          <span class="flex-1 truncate text-gray-700 font-medium" title="${k}">${k}</span>
+          <span class="text-gray-400 w-10 text-right text-xs">${fmt(addons[k])}件</span>
+        </div>
+        <div class="flex gap-1 items-center text-xs">
+          <span class="text-gray-400 w-10 text-right">單價</span>
+          <input type="number" id="ap_${eid(k)}" class="ni ni-r flex-1" value="${autoPrice}"
+            placeholder="單價" oninput="recalculate()">
+          <span class="text-gray-400 w-10 text-right">公關</span>
+          <input type="number" id="apr_${eid(k)}" class="ni ni-r w-16" value="${autoPr}"
+            placeholder="0" oninput="recalculate()">
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // PR counts
+  const prEl = document.getElementById('pr-groups');
+  prEl.innerHTML = Object.keys(reg).map(k => `
+    <div class="flex gap-1 items-center text-xs">
+      <span class="flex-1 truncate text-gray-700" title="${k}">${k}</span>
+      <input type="number" id="pr_${eid(k)}" class="ni ni-r w-20" value="${pr[k]||0}"
+        oninput="recalculate()" title="${k} 公關人數">
+    </div>`).join('');
+
+  lucide.createIcons();
+}
+
+function eid(name) { return name.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_'); }
+
+// ── Timing items ──
+function addTimingItem(name='', qty='', unit='', isPct=false) {
+  const id = ++state.timingItemId;
+  const el = document.createElement('div');
+  el.id = `ti_${id}`;
+  el.className = 'bg-gray-50 rounded-lg p-2 space-y-1';
+  el.innerHTML = `
+    <div class="flex gap-1 items-center">
+      <input type="text" placeholder="項目名稱" value="${name}"
+        class="ni flex-1 text-xs" id="ti_name_${id}" oninput="recalculate()">
+      <span class="del-btn" onclick="document.getElementById('ti_${id}').remove();recalculate()">✕</span>
+    </div>
+    <div class="flex gap-1 items-center">
+      <select id="ti_type_${id}" class="ni text-xs w-24" onchange="togglePctQty(${id});recalculate()">
+        <option value="fixed" ${!isPct?'selected':''}>固定費用</option>
+        <option value="percent" ${isPct?'selected':''}>百分比(%)</option>
+      </select>
+      <input type="number" id="ti_qty_${id}" placeholder="數量" value="${qty}"
+        class="ni ni-r flex-1 text-xs ${isPct?'hidden':''}" oninput="recalculate()">
+      <input type="number" id="ti_unit_${id}" placeholder="${isPct?'費率(%)':'單價'}" value="${unit}"
+        class="ni ni-r flex-1 text-xs" oninput="recalculate()">
+    </div>`;
+  document.getElementById('timing-items').appendChild(el);
+  lucide.createIcons();
+}
+
+function togglePctQty(id) {
+  const isPct = document.getElementById(`ti_type_${id}`).value === 'percent';
+  document.getElementById(`ti_qty_${id}`).classList.toggle('hidden', isPct);
+  document.getElementById(`ti_unit_${id}`).placeholder = isPct ? '費率(%)' : '單價';
+}
+
+function getTimingItems() {
+  const items = [];
+  document.querySelectorAll('[id^="ti_name_"]').forEach(el => {
+    const id = el.id.replace('ti_name_', '');
+    const isPct = document.getElementById(`ti_type_${id}`)?.value === 'percent';
+    items.push({
+      name:       el.value,
+      qty:        parseFloat(document.getElementById(`ti_qty_${id}`)?.value) || 0,
+      unit:       parseFloat(document.getElementById(`ti_unit_${id}`)?.value) || 0,
+      is_percent: isPct,
+    });
+  });
+  return items;
+}
+
+// ── Prev Settlement items ──
+function addPrevSettlement(name='', amount='') {
+  const id = ++state.prevItemId;
+  const el = document.createElement('div');
+  el.id = `prev_${id}`;
+  el.className = 'flex gap-1 items-center';
+  el.innerHTML = `
+    <input type="text" id="prev_name_${id}" placeholder="第一次結算" value="${name}"
+      class="ni flex-1 text-xs" oninput="recalculate()">
+    <input type="number" id="prev_amt_${id}" placeholder="金額" value="${amount}"
+      class="ni ni-r w-24 text-xs" oninput="recalculate()">
+    <span class="del-btn" onclick="document.getElementById('prev_${id}').remove();recalculate()">✕</span>`;
+  document.getElementById('prev-items').appendChild(el);
+}
+
+function getPrevSettlements() {
+  const items = [];
+  document.querySelectorAll('[id^="prev_name_"]').forEach(el => {
+    const id = el.id.replace('prev_name_', '');
+    const amt = parseFloat(document.getElementById(`prev_amt_${id}`)?.value) || 0;
+    items.push({ name: el.value, amount: amt });
+  });
+  return items;
+}
+
+// ── Timing preset save / load ──
+function saveTimingPreset() {
+  const items = getTimingItems();
+  const preset = {
+    contact: {
+      name: document.getElementById('contact_name')?.value || '',
+      info: document.getElementById('contact_info')?.value || '',
+    },
+    bank: {
+      name:    document.getElementById('bank_name')?.value    || '',
+      branch:  document.getElementById('bank_branch')?.value  || '',
+      account: document.getElementById('bank_account')?.value || '',
+      holder:  document.getElementById('bank_holder')?.value  || '',
+    },
+    timingItems: items,
+  };
+  if (items.length === 0 && !preset.bank.name && !preset.bank.account && !preset.contact.name) {
+    alert('承辦人、匯款帳戶和服務費項目都是空的，無法儲存。'); return;
+  }
+  const json = JSON.stringify(preset, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = '結算設定檔.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadTimingPreset(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // 相容舊格式（純陣列）
+      const contact = data.contact || {};
+      const bank    = data.bank    || {};
+      const items   = Array.isArray(data) ? data : (data.timingItems || []);
+      // 填入承辦人
+      if (contact.name !== undefined) document.getElementById('contact_name').value = contact.name;
+      if (contact.info !== undefined) document.getElementById('contact_info').value = contact.info;
+      // 填入匯款帳戶
+      if (bank.name    !== undefined) document.getElementById('bank_name').value    = bank.name;
+      if (bank.branch  !== undefined) document.getElementById('bank_branch').value  = bank.branch;
+      if (bank.account !== undefined) document.getElementById('bank_account').value = bank.account;
+      if (bank.holder  !== undefined) document.getElementById('bank_holder').value  = bank.holder;
+      // 重建服務費項目
+      document.getElementById('timing-items').innerHTML = '';
+      state.timingItemId = 0;
+      items.forEach(it => {
+        addTimingItem(it.name || '', it.qty ?? '', it.unit ?? '', !!it.is_percent);
+      });
+      recalculate();
+    } catch(err) {
+      alert('載入失敗：' + err.message + '\n請確認是正確的結算設定檔。');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── Get all manual values ──
+function getManual() {
+  const reg = state.registration;
+  const addons = state.addons;
+  const reg_prices = {}, pr_overrides = {}, addon_prices = {};
+  Object.keys(reg).forEach(k => {
+    reg_prices[k]   = parseFloat(document.getElementById(`rp_${eid(k)}`)?.value) || 0;
+    pr_overrides[k] = parseInt(document.getElementById(`pr_${eid(k)}`)?.value)   || 0;
+  });
+  const addon_pr = {};
+  Object.keys(addons).forEach(k => {
+    addon_prices[k] = parseFloat(document.getElementById(`ap_${eid(k)}`)?.value)  || 0;
+    addon_pr[k]     = parseInt(document.getElementById(`apr_${eid(k)}`)?.value)    || 0;
+  });
+
+  // Re-parse timing items with correct qty
+  const timing_items = [];
+  document.querySelectorAll('[id^="ti_name_"]').forEach(el => {
+    const id = el.id.replace('ti_name_', '');
+    const isPct = document.getElementById(`ti_type_${id}`)?.value === 'percent';
+    timing_items.push({
+      name:       el.value,
+      qty:        parseFloat(document.getElementById(`ti_qty_${id}`)?.value) || 0,
+      unit:       parseFloat(document.getElementById(`ti_unit_${id}`)?.value) || 0,
+      is_percent: isPct,
+    });
+  });
+
+  return {
+    event_name:   document.getElementById('event_name').value,
+    payment_date: document.getElementById('payment_date').value,
+    contact_name: document.getElementById('contact_name').value,
+    contact_info: document.getElementById('contact_info').value,
+    bank_name:    document.getElementById('bank_name').value,
+    bank_branch:  document.getElementById('bank_branch').value,
+    bank_account: document.getElementById('bank_account').value,
+    bank_holder:  document.getElementById('bank_holder').value,
+    atm_fee:          parseFloat(document.getElementById('atm_fee').value)          || 0,
+    cvs_fee:          parseFloat(document.getElementById('cvs_fee').value)          || 0,
+    refund_handler:   document.querySelector('input[name="refund_handler"]:checked')?.value || 'us',
+    refund_m1:        parseFloat(document.getElementById('refund_m1').value)        || 0,
+    refund_m2:        parseFloat(document.getElementById('refund_m2').value)        || 0,
+    chip_deposit:     parseFloat(document.getElementById('chip_deposit').value)     || 0,
+    overpaid:         parseFloat(document.getElementById('overpaid').value)         || 0,
+    credit_card_fee:  parseFloat(document.getElementById('credit_card_fee').value)  || 0,
+    pr_chip_deposit:  parseFloat(document.getElementById('pr_chip_deposit').value)  || 0,
+    prev_settlements: getPrevSettlements(),
+    excel_filename: state.excelFilename || '',
+    reg_prices, pr_overrides, addon_prices, addon_pr, timing_items,
+  };
+}
+
+// ── Recalculate (client-side) ──
+function recalculate() {
+  if (!Object.keys(state.registration).length) return;
+  const reg    = state.registration;
+  const addons = state.addons;
+  const fin    = state.financials;
+  const m      = getManual();
+  const pr     = m.pr_overrides;
+
+  // Reg fee（依 regOrder 排序）
+  let regFee = 0;
+  const regRows = [];
+  let totalCount = 0;
+  const regOrder = state.regOrder.length ? state.regOrder : Object.keys(reg);
+  for (const k of regOrder) {
+    const fee = (reg[k] - (pr[k]||0)) * (m.reg_prices[k]||0);
+    regFee += fee; totalCount += reg[k];
+    regRows.push({ name:k, count:reg[k], pr:pr[k]||0, price:m.reg_prices[k]||0, total:fee });
+  }
+
+  // Addon fee（依 addonOrder 排序）
+  let addonFee = 0;
+  const addonRows = [];
+  const addonOrder = state.addonOrder.length ? state.addonOrder : Object.keys(addons);
+  for (const k of addonOrder) {
+    const qty   = addons[k] || 0;
+    const pr    = m.addon_pr[k] || 0;
+    const total = (qty - pr) * (m.addon_prices[k]||0);
+    addonFee += total;
+    addonRows.push({ name:k, qty, pr, price:m.addon_prices[k]||0, total });
+  }
+
+  // Timing（全部由使用者自訂，不預設任何項目）
+  let timingSub = 0;
+  const timingRows = [];
+  for (const ti of m.timing_items) {
+    const sub = ti.is_percent ? Math.round(timingSub * ti.unit/100) : Math.round(ti.qty * ti.unit);
+    timingRows.push({ item:ti.name, qty:ti.qty, unit:ti.unit, sub, isPct:ti.is_percent });
+    timingSub += sub;
+  }
+  const timingTotal = Math.round(timingSub * 1.05);
+
+  // 前次結算（方式一、二共用）
+  const prevItems = getPrevSettlements();
+  const prevTotal = prevItems.reduce((s, x) => s + x.amount, 0);
+
+  // Method 1（晶片押金：手動輸入優先，Excel 自動讀取為備用）
+  const isClientRefund = m.refund_handler === 'client';
+  const m1_atm   = -m.atm_fee;
+  const m1_cvs   = -m.cvs_fee;
+  const m1_refund_val = isClientRefund ? m.refund_m1 : 0;
+  const chipDeposit = m.chip_deposit || (fin.chip_deposit||0);
+  const m1_chip  = -chipDeposit;
+  const m1_cc    = -m.credit_card_fee;
+  const m1_prev  = -prevTotal;
+  const m1_total = (fin.actual_paid||0)+m1_atm+m1_cvs+m1_refund_val+m1_chip+m1_cc-timingTotal+m1_prev;
+
+  // Method 2
+  const m2_refund_val = isClientRefund ? m.refund_m2 : 0;
+  const m2_cc       = -m.credit_card_fee;
+  const m2_prev     = -prevTotal;
+  const m2_discount = fin.discount_total || 0;
+  const m2_total = regFee+addonFee+(fin.postal||0)+m.overpaid+m2_discount+m2_refund_val+m2_cc+m2_prev-timingTotal;
+
+  // 最終請款金額（扣除公關晶片押金）
+  const prChipDeposit = m.pr_chip_deposit || 0;
+  const finalAmount   = m1_total - prChipDeposit;
+
+  // ── 異常警示：方式一/二差距過大 ──
+  const warnEl = document.getElementById('mismatch-warning');
+  const diff = Math.abs(m1_total - m2_total);
+  const threshold = 100; // 差距超過 100 元即顯示提示
+  if (warnEl) {
+    if (diff > threshold && (m1_total !== 0 || m2_total !== 0)) {
+      warnEl.style.display = 'block';
+      warnEl.innerHTML = `⚠ 帳務可能有誤：方式一 <strong>NT$ ${fmt(m1_total)}</strong>，方式二 <strong>NT$ ${fmt(m2_total)}</strong>，相差 <strong>${fmt(diff)}</strong> 元，請檢查各欄位數字是否正確。`;
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+
+  // Update P1
+  const d = m.payment_date ? new Date(m.payment_date+' 12:00').toLocaleDateString('zh-TW') : '—';
+  document.getElementById('p1_date').textContent    = d;
+  document.getElementById('p1_reason').textContent  = (m.event_name||'—')+' 經費結算';
+  document.getElementById('p1_amount').textContent  = fmt(finalAmount);
+  document.getElementById('p1_bank').textContent    = m.bank_name   || '—';
+  document.getElementById('p1_branch').textContent  = m.bank_branch || '—';
+  document.getElementById('p1_account').textContent = m.bank_account|| '—';
+  document.getElementById('p1_holder').textContent  = m.bank_holder || '—';
+  const contactStr = [m.contact_name, m.contact_info].filter(Boolean).join(' ｜ ');
+  document.getElementById('p1_contact').textContent = contactStr || '—';
+  const fn = state.excelFilename || '—';
+  const tsLabel = state.filenameInfo?.timestampFormatted ? ` (下載：${state.filenameInfo.timestampFormatted})` : '';
+  document.getElementById('p1_excel').textContent = fn + tsLabel;
+  document.getElementById('p2_excel').textContent = fn + tsLabel;
+
+  // Method 1
+  document.getElementById('m1_paid').textContent   = fmt(fin.actual_paid||0);
+  document.getElementById('m1_atm').innerHTML      = fmtS(m1_atm);
+  document.getElementById('m1_cvs').innerHTML      = fmtS(m1_cvs);
+  // 退費行：客戶退費才顯示
+  const m1RefRow = document.getElementById('m1_refund_row');
+  const m2RefRow = document.getElementById('m2_refund_row');
+  const refFields = document.getElementById('refund_fields');
+  if (isClientRefund) {
+    refFields.style.display = '';
+    m1RefRow.style.display = '';
+    m2RefRow.style.display = '';
+    document.getElementById('m1_refund').textContent = fmt(m1_refund_val);
+    document.getElementById('m2_refund').textContent = fmt(m2_refund_val);
+  } else {
+    refFields.style.display = 'none';
+    m1RefRow.style.display = 'none';
+    m2RefRow.style.display = 'none';
+  }
+  document.getElementById('m1_chip').innerHTML     = fmtS(m1_chip);
+  document.getElementById('m1_cc').innerHTML       = fmtS(m1_cc);
+  document.getElementById('m1_timing').innerHTML   = fmtS(-timingTotal);
+  document.getElementById('m1_prev').innerHTML     = fmtS(m1_prev);
+  document.getElementById('m1_total').textContent  = fmt(m1_total);
+
+  // Method 2
+  document.getElementById('m2_reg').textContent      = fmt(regFee);
+  document.getElementById('m2_addon').textContent    = fmt(addonFee);
+  document.getElementById('m2_postal').textContent   = fmt(fin.postal||0);
+  document.getElementById('m2_overpaid').textContent = fmt(m.overpaid);
+  document.getElementById('m2_cc').innerHTML         = fmtS(m2_cc);
+  document.getElementById('m2_timing').innerHTML     = fmtS(-timingTotal);
+  document.getElementById('m2_prev').innerHTML       = fmtS(m2_prev);
+  document.getElementById('m2_total').textContent    = fmt(m2_total);
+  // 折扣行（有值才顯示）+ 明細
+  const discountRow = document.getElementById('m2_discount_row');
+  if (m2_discount !== 0) {
+    document.getElementById('m2_discount').innerHTML = fmtS(m2_discount);
+    discountRow.style.display = '';
+    const detailEl = document.getElementById('m2_discount_detail');
+    const bd = fin.discount_breakdown || {};
+    const keys = Object.keys(bd);
+    if (keys.length > 1) {
+      detailEl.innerHTML = keys.map(k => `<div class="flex justify-between"><span>${k}</span><span class="tabular-nums">${fmtS(bd[k])}</span></div>`).join('');
+      document.getElementById('m2_discount_arrow').style.display = '';
+    } else {
+      if (keys.length === 1) document.getElementById('m2_discount_label').textContent = keys[0];
+      detailEl.innerHTML = '';
+      document.getElementById('m2_discount_arrow').style.display = 'none';
+    }
+  } else {
+    discountRow.style.display = 'none';
+  }
+
+  // Result
+  document.getElementById('result_amount').textContent = `NT$ ${fmt(m1_total)}`;
+  const prChipEl  = document.getElementById('result_pr_chip');
+  const finalEl   = document.getElementById('result_final');
+  const prChipRow = document.getElementById('pr-chip-row');
+  const finalRow  = document.getElementById('final-row');
+  if (prChipDeposit > 0) {
+    prChipEl.textContent = `-${fmt(prChipDeposit)}`;
+    finalEl.textContent  = `NT$ ${fmt(finalAmount)}`;
+    prChipRow.style.display = '';
+    finalRow.style.display  = '';
+  } else {
+    prChipRow.style.display = 'none';
+    finalRow.style.display  = 'none';
+  }
+
+  // Timing table
+  document.getElementById('timing-tbody').innerHTML = timingRows.map(t =>
+    `<tr draggable="true">
+     <td><span class="drag-handle">⠿</span>${t.item}</td>
+     <td class="text-center">${t.isPct ? t.unit+'%' : fmt(t.qty)}</td>
+     <td class="text-right">${t.isPct ? '（按前項小計）' : fmt(t.unit)}</td>
+     <td class="text-right">${fmt(t.sub)}</td></tr>`).join('');
+  document.getElementById('timing_sub').textContent = fmt(timingSub);
+  document.getElementById('timing_ttl').textContent = fmt(timingTotal);
+
+  // Reg table
+  document.getElementById('reg-tbody').innerHTML = regRows.map(r =>
+    `<tr draggable="true">
+     <td><span class="drag-handle">⠿</span>${r.name}</td>
+     <td class="text-center">${fmt(r.count)}</td>
+     <td class="text-center">${fmt(r.pr)}</td>
+     <td class="text-center">${fmt(r.count-r.pr)}</td>
+     <td class="text-right">${fmt(r.price)}</td>
+     <td class="text-right">${fmt(r.total)}</td></tr>`).join('');
+  const totalPr      = regRows.reduce((s, r) => s + r.pr, 0);
+  const totalBilling = regRows.reduce((s, r) => s + (r.count - r.pr), 0);
+  document.getElementById('reg_count').textContent       = fmt(totalCount);
+  document.getElementById('reg_pr_ttl').textContent      = fmt(totalPr);
+  document.getElementById('reg_billing_ttl').textContent = fmt(totalBilling);
+  document.getElementById('reg_fee_ttl').textContent     = fmt(regFee);
+
+  // Addon table
+  document.getElementById('addon-tbody').innerHTML = addonRows.map(a =>
+    `<tr draggable="true">
+     <td><span class="drag-handle">⠿</span>${a.name}</td>
+     <td class="text-center">${fmt(a.qty)}</td>
+     <td class="text-center">${fmt(a.pr)}</td>
+     <td class="text-center">${fmt(a.qty-a.pr)}</td>
+     <td class="text-right">${fmt(a.price)}</td>
+     <td class="text-right">${fmt(a.total)}</td></tr>`).join('');
+  document.getElementById('addon_ttl').textContent = fmt(addonFee);
+
+  // 重新綁定拖曳事件
+  initRowDrag('reg-tbody', (src, dst) => {
+    const o = [...state.regOrder];
+    const [moved] = o.splice(src, 1);
+    o.splice(dst, 0, moved);
+    state.regOrder = o;
+    recalculate();
+  });
+  initRowDrag('addon-tbody', (src, dst) => {
+    const o = [...state.addonOrder];
+    const [moved] = o.splice(src, 1);
+    o.splice(dst, 0, moved);
+    state.addonOrder = o;
+    recalculate();
+  });
+  initRowDrag('timing-tbody', (src, dst) => {
+    const container = document.getElementById('timing-items');
+    const items = [...container.children];
+    const [moved] = items.splice(src, 1);
+    items.splice(dst, 0, moved);
+    items.forEach(el => container.appendChild(el));
+    recalculate();
+  });
+}
+
+// ── Generate PDF（瀏覽器列印，階段 2 會改用專用列印版面）──
+function generatePDF() {
+  window.print();
+}
+
+// ── Floating Tooltip ──
+const tipFloat = document.getElementById('tip-float');
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('.tip-icon, [data-tip]');
+  if (!el || !el.dataset.tip) return;
+  tipFloat.textContent = el.dataset.tip;
+  tipFloat.style.display = 'block';
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('.tip-icon, [data-tip]')) return;
+  tipFloat.style.display = 'none';
+});
+document.addEventListener('mousemove', e => {
+  if (tipFloat.style.display !== 'block') return;
+  const pad = 12, w = tipFloat.offsetWidth, h = tipFloat.offsetHeight;
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + w > window.innerWidth  - pad) x = e.clientX - w - pad;
+  if (y + h > window.innerHeight - pad) y = e.clientY - h - pad;
+  tipFloat.style.left = x + 'px';
+  tipFloat.style.top  = y + 'px';
+});
+
+// ── Row drag-and-drop ──
+function initRowDrag(tbodyId, onReorder) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  let dragSrc = null;
+
+  tbody.querySelectorAll('tr[draggable="true"]').forEach(tr => {
+    tr.addEventListener('dragstart', e => {
+      dragSrc = tr;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => tr.classList.add('drag-src'), 0);
+    });
+    tr.addEventListener('dragend', () => {
+      tbody.querySelectorAll('tr').forEach(t => {
+        t.classList.remove('drag-over');
+        t.classList.remove('drag-src');
+      });
+      dragSrc = null;
+    });
+    tr.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (!dragSrc || tr === dragSrc) return;
+      tbody.querySelectorAll('tr').forEach(t => t.classList.remove('drag-over'));
+      tr.classList.add('drag-over');
+    });
+    tr.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!dragSrc || tr === dragSrc) return;
+      const rows = [...tbody.querySelectorAll('tr[draggable="true"]')];
+      const srcIdx = rows.indexOf(dragSrc);
+      const dstIdx = rows.indexOf(tr);
+      if (srcIdx === -1 || dstIdx === -1) return;
+      onReorder(srcIdx, dstIdx);
+    });
+  });
+}
+
+// ── Accordion ──
+function toggleDiscountDetail() {
+  const d = document.getElementById('m2_discount_detail');
+  const a = document.getElementById('m2_discount_arrow');
+  const show = d.style.display === 'none';
+  d.style.display = show ? '' : 'none';
+  a.textContent = show ? '▼' : '▶';
+}
+
+function toggleAcc(hdr) {
+  const body = hdr.nextElementSibling;
+  const isOpen = hdr.classList.contains('open');
+  hdr.classList.toggle('open', !isOpen);
+  body.classList.toggle('open', !isOpen);
+}
+
+// ── Init ──
+document.getElementById('payment_date').value = new Date().toISOString().slice(0,10);
+['event_name','payment_date','bank_name','bank_branch','bank_account','bank_holder'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalculate));
+['atm_fee','cvs_fee','refund_m1','refund_m2','chip_deposit','overpaid','credit_card_fee','pr_chip_deposit'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalculate));
+</script>
+</body>
+</html>
