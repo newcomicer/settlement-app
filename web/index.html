@@ -4,12 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>筆記報名 經費結算系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="js/excel-parser.js"></script>
 <style>
   body { font-family: 'Noto Sans TC','PingFang TC',sans-serif; }
+  .tabular-nums { font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
+  .result-amount { font-family: 'DM Mono', monospace; }
   .drop-active { border-color:#3b82f6!important; background:#eff6ff!important; }
   .ni { width:100%; padding:4px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; }
   .ni:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.2); }
@@ -75,32 +79,32 @@
     font-size:12px; border-radius:8px; padding:8px 12px; margin-bottom:8px; }
 </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen" style="background:#F0F3F9">
 <div id="tip-float"></div>
 <div id="toast-container"></div>
 
 <!-- Top bar -->
-<div class="bg-[#003CAA] text-white px-6 py-3 flex items-center justify-between">
-  <div class="flex items-center gap-3">
-    <!-- 筆記報名 N Logo -->
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="28" height="28" rx="4" fill="white"/>
+<div style="background:#003CAA;height:54px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 0 rgba(0,0,0,.15),0 4px 16px rgba(0,40,120,.2)">
+  <div style="display:flex;align-items:center;gap:10px">
+    <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="5" fill="white"/>
       <path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="#003CAA"/>
     </svg>
-    <div class="leading-tight">
-      <div class="text-base font-black tracking-wide">筆記報名</div>
-      <div class="text-xs text-blue-200 -mt-0.5">經費結算系統 <span class="opacity-60">v2.0.0-dev</span></div>
+    <div style="line-height:1.3">
+      <div style="color:white;font-size:15px;font-weight:900;letter-spacing:.5px">筆記報名</div>
+      <div style="color:rgba(191,219,254,.85);font-size:11px;margin-top:-1px">經費結算系統 <span style="font-size:9px;opacity:.6;font-family:'DM Mono',monospace">v2.0.0-dev</span></div>
     </div>
-    <span class="badge bg-white text-[#003CAA]" id="status-badge">等待上傳</span>
+    <span class="badge" style="background:white;color:#003CAA;margin-left:6px" id="status-badge">等待上傳</span>
   </div>
   <button id="btn-pdf" onclick="generatePDF()"
-    class="bg-white text-[#003CAA] font-bold px-4 py-2 rounded-lg text-sm hover:bg-blue-50 disabled:opacity-40 flex items-center gap-2"
+    style="background:white;color:#003CAA;font-weight:700;padding:7px 16px;border-radius:7px;font-size:13px;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s"
+    onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='white'"
     disabled>
     <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF
   </button>
 </div>
 
-<div class="flex h-[calc(100vh-52px)]">
+<div class="flex" style="height:calc(100vh - 54px)">
 
 <!-- ═══ LEFT PANEL ═══ -->
 <div class="w-[340px] flex-shrink-0 overflow-y-auto bg-white border-r border-gray-200 p-3 space-y-2">
@@ -116,11 +120,11 @@
 
   <!-- ══ Group 1：承辦設定 ══ -->
   <div class="rounded-xl border border-blue-100 bg-blue-50/30 p-2 space-y-1.5">
-    <p class="text-[10px] font-bold text-[#003CAA] tracking-widest px-1">📁 承辦設定</p>
+    <p class="text-[10px] font-bold text-[#003CAA] tracking-widest px-1 flex items-center gap-1"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>承辦設定</p>
 
     <!-- 基本資訊 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">📋 基本資訊</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>基本資訊</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -134,7 +138,7 @@
 
     <!-- 匯款帳戶 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">🏦 匯款帳戶</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>匯款帳戶</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -148,7 +152,7 @@
 
     <!-- 服務費 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">⏱ 服務費項目</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>服務費項目</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -178,11 +182,11 @@
 
   <!-- ══ Group 2：費用資料 ══ -->
   <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-2 space-y-1.5">
-    <p class="text-[10px] font-bold text-gray-400 tracking-widest px-1">📊 費用資料</p>
+    <p class="text-[10px] font-bold text-gray-400 tracking-widest px-1 flex items-center gap-1"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>費用資料</p>
 
     <!-- 費用驗算 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">💰 費用驗算</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>費用驗算</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -251,7 +255,7 @@
 
     <!-- 報名費收入 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">🏅 報名費收入</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>報名費收入</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -262,7 +266,7 @@
 
     <!-- 公關人數 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">🎟 公關人數</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>公關人數</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -273,7 +277,7 @@
 
     <!-- 加價購收入 -->
     <div class="acc-hdr" onclick="toggleAcc(this)">
-      <span class="acc-title">🛍 加價購收入</span>
+      <span class="acc-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>加價購收入</span>
       <span class="acc-arrow">▼</span>
     </div>
     <div class="acc-body">
@@ -434,8 +438,8 @@
               <span id="m2_overpaid" class="tabular-nums">—</span>
             </div>
             <div id="m2_discount_row" style="display:none">
-              <div class="flex justify-between items-center text-gray-500 text-xs pl-3 cursor-pointer" onclick="toggleDiscountDetail()">
-                <span class="tip-wrap"><span id="m2_discount_label">折扣優惠</span><span class="tip-icon" data-tip="Excel 中的折扣/優惠金額，點擊展開明細">ⓘ</span><span id="m2_discount_arrow" class="text-[9px] text-gray-400 ml-1">▶</span></span>
+              <div id="m2_discount_clickable" class="flex justify-between items-center text-gray-500 text-xs pl-3" onclick="toggleDiscountDetail()">
+                <span class="tip-wrap"><span id="m2_discount_label">折扣優惠</span><span id="m2_discount_tip" class="tip-icon" data-tip="Excel 中的折扣/優惠金額">ⓘ</span><span id="m2_discount_arrow" class="text-[9px] text-gray-400 ml-1">▶</span></span>
                 <span id="m2_discount" class="tabular-nums">—</span>
               </div>
               <div id="m2_discount_detail" class="pl-6 text-[11px] text-gray-400 space-y-0.5" style="display:none"></div>
@@ -988,13 +992,22 @@ function recalculate() {
     const detailEl = document.getElementById('m2_discount_detail');
     const bd = fin.discount_breakdown || {};
     const keys = Object.keys(bd);
+    const clickable = document.getElementById('m2_discount_clickable');
+    const tipEl = document.getElementById('m2_discount_tip');
     if (keys.length > 1) {
+      document.getElementById('m2_discount_label').textContent = '折扣優惠';
       detailEl.innerHTML = keys.map(k => `<div class="flex justify-between"><span>${k}</span><span class="tabular-nums">${fmtS(bd[k])}</span></div>`).join('');
       document.getElementById('m2_discount_arrow').style.display = '';
+      detailEl.style.display = 'none';
+      clickable.style.cursor = 'pointer';
+      tipEl.dataset.tip = 'Excel 中的折扣/優惠金額，點擊展開明細';
     } else {
       if (keys.length === 1) document.getElementById('m2_discount_label').textContent = keys[0];
       detailEl.innerHTML = '';
       document.getElementById('m2_discount_arrow').style.display = 'none';
+      detailEl.style.display = 'none';
+      clickable.style.cursor = 'default';
+      tipEl.dataset.tip = 'Excel 中的折扣/優惠金額';
     }
   } else {
     discountRow.style.display = 'none';

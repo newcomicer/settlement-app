@@ -195,8 +195,9 @@ function parseExcel(workbook, filename) {
     }
   }
 
-  // 優先從「免費名單」工作表
-  const freeSheetName = workbook.SheetNames.find(n => n === '免費名單');
+  // 優先從「免費名單」或「公關名單」工作表
+  const FREE_SHEET_NAMES = ['免費名單', '公關名單'];
+  const freeSheetName = workbook.SheetNames.find(n => FREE_SHEET_NAMES.includes(n));
   if (freeSheetName) {
     const wsFree = workbook.Sheets[freeSheetName];
     const freeRows = XLSX.utils.sheet_to_json(wsFree, { header: 1, defval: null });
