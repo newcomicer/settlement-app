@@ -59,6 +59,19 @@
     box-shadow:0 4px 14px rgba(0,0,0,.45); line-height:1.6;
   }
   .tip-icon:hover + .tip-box, .tip-wrap:hover .tip-box { display:block; }
+  /* PDF dropdown */
+  .pdf-dropdown { position:relative; }
+  .pdf-dropdown-menu {
+    display:none; position:absolute; right:0; top:calc(100% + 6px); z-index:999;
+    background:#1e293b; border:1px solid rgba(255,255,255,.12); border-radius:8px;
+    min-width:200px; padding:4px; box-shadow:0 8px 24px rgba(0,0,0,.5);
+  }
+  .pdf-dropdown-menu.open { display:block; }
+  .pdf-dropdown-item {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:6px;
+    cursor:pointer; color:#e2e8f0; transition:background .15s;
+  }
+  .pdf-dropdown-item:hover { background:rgba(255,255,255,.1); }
   /* Row drag-and-drop */
   tr[draggable="true"] { cursor: grab; }
   tr[draggable="true"]:active { cursor: grabbing; }
@@ -130,9 +143,21 @@
     <span class="badge" style="background:white;color:#003CAA;margin-left:6px" id="status-badge">等待上傳</span>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
-    <button id="btn-pdf" class="btn-topbar" onclick="generatePDF()" disabled>
-      <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF
-    </button>
+    <div class="pdf-dropdown" id="pdf-dropdown">
+      <button id="btn-pdf" class="btn-topbar" onclick="togglePdfMenu()" disabled>
+        <i data-lucide="download" class="w-4 h-4"></i> 匯出 PDF <span style="font-size:9px;opacity:.7">▼</span>
+      </button>
+      <div class="pdf-dropdown-menu" id="pdf-menu">
+        <div class="pdf-dropdown-item" onclick="generatePDF('settlement')">
+          <i data-lucide="file-text" class="w-4 h-4" style="flex-shrink:0"></i>
+          <div><div style="font-weight:600">經費結算</div><div style="font-size:10px;color:#9ca3af">結算明細單頁</div></div>
+        </div>
+        <div class="pdf-dropdown-item" onclick="generatePDF('payment')">
+          <i data-lucide="file-check" class="w-4 h-4" style="flex-shrink:0"></i>
+          <div><div style="font-weight:600">費用申請</div><div style="font-size:10px;color:#9ca3af">匯款申請 + 結算明細</div></div>
+        </div>
+      </div>
+    </div>
     <div id="user-info" style="display:none;align-items:center;gap:8px">
       <div class="topbar-user">
         <div class="topbar-user-initial" id="user-initial"></div>
@@ -197,7 +222,7 @@
     <div class="acc-body">
       <div class="acc-body-inner">
         <div id="race-picker" style="display:none" class="mb-2">
-          <label class="lbl">從 budget-tracker 匯入</label>
+          <label class="lbl">從經費結算系統匯入</label>
           <select id="race-select" class="ni text-xs" onchange="onRacePicked(this.value)">
             <option value="">— 選擇活動 —</option>
           </select>
@@ -1136,9 +1161,264 @@ function recalculate() {
   });
 }
 
-// ── Generate PDF（瀏覽器列印，階段 2 會改用專用列印版面）──
-function generatePDF() {
-  window.print();
+// ── PDF dropdown menu ──
+function togglePdfMenu() {
+  document.getElementById('pdf-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('pdf-dropdown');
+  if (dd && !dd.contains(e.target)) document.getElementById('pdf-menu').classList.remove('open');
+});
+
+// ── Generate PDF（新視窗 + window.print → 向量 PDF）──
+function generatePDF(mode) {
+  document.getElementById('pdf-menu').classList.remove('open');
+  if (!Object.keys(state.registration).length) { alert('請先上傳 Excel'); return; }
+
+  const m   = getManual();
+  const fin = state.financials;
+  const pr  = m.pr_overrides;
+  const isClientRefund = m.refund_handler === 'client';
+
+  // ── 重算所有數據（與 recalculate 一致）──
+  const hasDirectFee = Object.keys(state.reg_fee_by_group || {}).length > 0;
+  let regFee = 0; const regRows = []; let totalCount = 0;
+  const regOrder = state.regOrder.length ? state.regOrder : Object.keys(state.registration);
+  for (const k of regOrder) {
+    const paidCount = state.reg_paid_count?.[k] || (state.registration[k] - (pr[k]||0));
+    const fee = hasDirectFee ? (state.reg_fee_by_group[k]||0) : (state.registration[k]-(pr[k]||0))*(m.reg_prices[k]||0);
+    regFee += fee; totalCount += state.registration[k];
+    regRows.push({ name:k, count:state.registration[k], pr:pr[k]||0, paid:paidCount, price:m.reg_prices[k]||0, total:fee });
+  }
+  const totalPr = regRows.reduce((s,r)=>s+r.pr,0);
+  const totalBilling = regRows.reduce((s,r)=>s+r.paid,0);
+
+  let addonFee = 0; const addonRows = [];
+  const addonOrder = state.addonOrder.length ? state.addonOrder : Object.keys(state.addons);
+  for (const k of addonOrder) {
+    const qty = state.addons[k]||0, apr = m.addon_pr[k]||0;
+    const total = (qty-apr)*(m.addon_prices[k]||0);
+    addonFee += total;
+    addonRows.push({ name:k, qty, pr:apr, price:m.addon_prices[k]||0, total });
+  }
+
+  let timingSub = 0; const timingRows = [];
+  for (const ti of m.timing_items) {
+    const sub = ti.is_percent ? Math.round(timingSub*ti.unit/100) : Math.round(ti.qty*ti.unit);
+    timingRows.push({ item:ti.name, qty:ti.qty, unit:ti.unit, sub, isPct:ti.is_percent });
+    timingSub += sub;
+  }
+  const timingTotal = Math.round(timingSub * 1.05);
+
+  const prevItems = getPrevSettlements();
+  const prevTotal = prevItems.reduce((s,x)=>s+x.amount,0);
+
+  const chipDeposit = m.chip_deposit || (fin.chip_deposit||0);
+  const m1_atm = -m.atm_fee, m1_cvs = -m.cvs_fee, m1_chip = -chipDeposit;
+  const m1_cc = -m.credit_card_fee, m1_prev = -prevTotal;
+  const m1_refund_val = isClientRefund ? m.refund_m1 : 0;
+  const m1_total = (fin.actual_paid||0)+m1_atm+m1_cvs+m1_refund_val+m1_chip+m1_cc-timingTotal+m1_prev;
+
+  const m2_cc = -m.credit_card_fee, m2_prev = -prevTotal;
+  const m2_discount = fin.discount_total||0;
+  const m2_refund_val = isClientRefund ? m.refund_m2 : 0;
+  const m2_total = regFee+addonFee+(fin.postal||0)+m.overpaid+m2_discount+m2_refund_val+m2_cc+m2_prev-timingTotal;
+
+  const prChipDeposit = m.pr_chip_deposit||0;
+  const finalAmount = m1_total - prChipDeposit;
+
+  // ── helpers ──
+  const f = n => n==null ? '—' : Number(n).toLocaleString('zh-TW');
+  const deduct = v => { v=Number(v); return v!==0 ? '<span class="neg">-'+f(Math.abs(v))+'</span>' : '—'; };
+  const fmtCell = v => { v=Number(v); return v<0 ? '<span class="neg">-'+f(-v)+'</span>' : f(v); };
+
+  const eventName = m.event_name || '—';
+  const payDate = m.payment_date ? new Date(m.payment_date+' 12:00').toLocaleDateString('zh-TW') : '—';
+  const excelFn = state.excelFilename || '';
+  const tsLabel = state.filenameInfo?.timestampFormatted ? ` (下載：${state.filenameInfo.timestampFormatted})` : '';
+  const excelLabel = excelFn + tsLabel;
+
+  const logo = '<svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><rect width="28" height="28" rx="4" fill="#003CAA"/><path d="M6 22V6h3.2l9.6 11.2V6H22v16h-3.2L9.2 10.8V22H6z" fill="white"/></svg>';
+
+  // ── Result box ──
+  let resultHtml;
+  if (prChipDeposit > 0) {
+    resultHtml = '<div class="result-box" style="flex-direction:column;align-items:flex-end;gap:6px">'
+      +'<div style="display:flex;justify-content:space-between;width:100%;font-size:11px;color:#374151"><span>本次結算金額</span><span>NT$ '+f(m1_total)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between;width:100%;font-size:11px;color:#374151"><span>扣：公關晶片押金</span><span class="neg">（'+f(prChipDeposit)+'）</span></div>'
+      +'<div style="display:flex;justify-content:space-between;width:100%;border-top:1px solid #93c5fd;padding-top:6px"><span class="result-label">實際請款金額</span><span class="result-amount">NT$ '+f(finalAmount)+'</span></div>'
+      +'</div>';
+  } else {
+    resultHtml = '<div class="result-box"><span class="result-label">本次結算金額</span><span class="result-amount">NT$ '+f(finalAmount)+'</span></div>';
+  }
+
+  // ── 時間戳 YYYYMMDDhhmm ──
+  const now = new Date();
+  const ts = now.getFullYear()
+    + String(now.getMonth()+1).padStart(2,'0')
+    + String(now.getDate()).padStart(2,'0')
+    + String(now.getHours()).padStart(2,'0')
+    + String(now.getMinutes()).padStart(2,'0');
+
+  const isPayment = (mode === 'payment');
+  const titlePrefix = isPayment ? '【費用申請】' : '【經費結算】';
+  const docTitle = titlePrefix + eventName + ts;
+
+  // ── 共用 CSS ──
+  const cssBlock = `
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Noto Sans TC','PingFang TC',sans-serif; font-size:12px; color:#1a1a1a; }
+  @media print {
+    @page { size:A4; margin:0; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+  .page { width:210mm; min-height:297mm; padding:18mm 18mm 15mm; page-break-after:always; position:relative; }
+  .page:last-child { page-break-after:auto; }
+  .page-header { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid #003CAA; padding-bottom:10px; margin-bottom:18px; }
+  .page-header h1 { font-size:18px; font-weight:900; color:#003CAA; letter-spacing:0.05em; }
+  .page-tag { background:#003CAA; color:white; font-size:10px; font-weight:700; padding:3px 10px; border-radius:12px; }
+  .page-footer { position:absolute; bottom:10mm; left:18mm; right:18mm; border-top:1px solid #e5e7eb; padding-top:5px; display:flex; justify-content:space-between; color:#9ca3af; font-size:9px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:14px; }
+  th { background:#003CAA; color:white; padding:7px 9px; font-size:11px; font-weight:600; text-align:center; }
+  td { padding:7px 9px; border-bottom:1px solid #e5e7eb; font-size:11px; vertical-align:middle; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  .total-row td { background:#eff6ff !important; font-weight:700; font-size:12px; }
+  .text-right { text-align:right; }
+  .text-center { text-align:center; }
+  .section-title { font-size:11px; font-weight:700; color:#003CAA; text-transform:uppercase; letter-spacing:0.08em; margin:16px 0 6px; padding-left:8px; border-left:3px solid #3b82f6; }
+  .method-box { border:1px solid #dde3ef; border-radius:6px; overflow:hidden; }
+  .method-header { background:#003CAA; color:white; padding:6px 12px; font-size:11px; font-weight:700; }
+  .method-body { padding:10px 12px; }
+  .method-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:11px; }
+  .method-row.sub { padding-left:12px; color:#6b7280; font-size:10px; }
+  .method-row.total { border-top:1px solid #e5e7eb; margin-top:4px; padding-top:6px; font-weight:700; color:#1a1a1a; }
+  .method-row.total .val { color:#003CAA; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .result-box { background:#eff6ff; border:2px solid #3b82f6; border-radius:8px; padding:12px 18px; display:flex; justify-content:space-between; align-items:center; margin:12px 0; }
+  .result-label { font-size:12px; color:#374151; font-weight:600; }
+  .result-amount { font-size:22px; font-weight:900; color:#003CAA; }
+  .info-table td:first-child { font-weight:600; color:#4b5563; width:30%; background:#f1f5f9; }
+  .amount-highlight { font-size:16px; font-weight:800; color:#003CAA; }
+  .neg { color:#ef4444; }`;
+
+  // ── 第一頁：匯款申請（僅費用申請模式） ──
+  const page1Html = `
+<div class="page">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      ${logo}
+      <div><h1>費用申請單</h1><p style="font-size:11px;color:#6b7280;margin-top:3px">${eventName}</p></div>
+    </div>
+    <span class="page-tag">第 1 頁 · 匯款申請</span>
+  </div>
+  <p style="font-size:11px;color:#374151;margin-bottom:4px">請依下列資訊辦理匯款，如有疑問請聯繫業務承辦人。</p>
+  ${excelLabel ? '<p style="font-size:9px;color:#9ca3af;margin-bottom:10px">📄 資料來源：'+excelLabel+'</p>' : ''}
+  <table class="info-table">
+    <tr><td>請款日期</td><td>${payDate}</td></tr>
+    <tr><td>匯款原因</td><td>${eventName} 經費結算</td></tr>
+    <tr><td>結算金額</td><td class="amount-highlight">NT$ ${f(finalAmount)}</td></tr>
+    <tr><td>銀行名稱</td><td>${m.bank_name||'—'}</td></tr>
+    <tr><td>分行</td><td>${m.bank_branch||'—'}</td></tr>
+    <tr><td>帳號</td><td style="font-size:13px;font-weight:700;letter-spacing:0.05em">${m.bank_account||'—'}</td></tr>
+    <tr><td>戶名</td><td style="font-weight:700">${m.bank_holder||'—'}</td></tr>
+    ${m.contact_name||m.contact_info ? '<tr><td>承辦人</td><td>'+(m.contact_name||'')+'</td></tr><tr><td>聯絡方式</td><td>'+(m.contact_info||'')+'</td></tr>' : ''}
+    ${excelLabel ? '<tr><td>資料來源</td><td style="font-family:monospace;font-size:10px;color:#6b7280">'+excelLabel+'</td></tr>' : ''}
+  </table>
+  <div style="margin-top:24px;padding:12px;background:#fefce8;border:1px solid #fde047;border-radius:6px">
+    <p style="font-size:10px;color:#713f12">⚠ 本申請單附件包含：經費結算明細（第2頁）、客戶確認截圖、報價單</p>
+  </div>
+  <div class="page-footer"><span>${eventName}</span><span>製表日期：${payDate}</span><span>1 / 2</span></div>
+</div>`;
+
+  // ── 第二頁：經費結算明細（兩種模式共用）──
+  const pageTagHtml = isPayment ? '<span class="page-tag">第 2 頁 · 經費結算</span>' : '';
+  const footerPageNum = isPayment ? '2 / 2' : '';
+  const page2Html = `
+<div class="page">
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      ${logo}
+      <div><h1>經費結算明細</h1><p style="font-size:11px;color:#6b7280;margin-top:3px">${eventName}</p></div>
+    </div>
+    ${pageTagHtml}
+  </div>
+  ${excelLabel ? '<p style="font-size:9px;color:#9ca3af;margin-bottom:10px">📄 資料來源：'+excelLabel+'</p>' : ''}
+
+  <div class="section-title">報名人數明細</div>
+  <table>
+    <thead><tr><th>組別</th><th>總人數</th><th>公關人數</th><th>繳費人數</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>${regRows.map(r=>'<tr><td>'+r.name+'</td><td class="text-center">'+r.count+'</td><td class="text-center">'+r.pr+'</td><td class="text-center">'+r.paid+'</td><td class="text-right">'+f(r.price)+'</td><td class="text-right">'+f(r.total)+'</td></tr>').join('')}</tbody>
+    <tfoot><tr class="total-row"><td>合計</td><td class="text-center">${totalCount}</td><td class="text-center">${totalPr}</td><td class="text-center">${totalBilling}</td><td></td><td class="text-right">${f(regFee)}</td></tr></tfoot>
+  </table>
+
+  <div class="section-title">加價購明細</div>
+  <table>
+    <thead><tr><th>項目</th><th>數量</th><th>公關</th><th>計費</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>${addonRows.map(a=>'<tr><td>'+a.name+'</td><td class="text-center">'+a.qty+'</td><td class="text-center">'+a.pr+'</td><td class="text-center">'+(a.qty-a.pr)+'</td><td class="text-right">'+f(a.price)+'</td><td class="text-right">'+f(a.total)+'</td></tr>').join('')}</tbody>
+    <tfoot><tr class="total-row"><td colspan="5" class="text-right">合計</td><td class="text-right">${f(addonFee)}</td></tr></tfoot>
+  </table>
+
+  <div class="section-title">服務費明細</div>
+  <table>
+    <thead><tr><th>服務項目</th><th>數量</th><th>單價</th><th>小計</th></tr></thead>
+    <tbody>${timingRows.map(t=>'<tr><td>'+t.item+'</td><td class="text-center">'+(t.isPct ? '—' : f(t.qty))+'</td><td class="text-right">'+(t.isPct ? t.unit+'%（按前項小計）' : f(t.unit))+'</td><td class="text-right">'+f(t.sub)+'</td></tr>').join('')}</tbody>
+    <tfoot>
+      <tr><td colspan="3" class="text-right" style="font-size:10px;color:#6b7280">小計（未稅）</td><td class="text-right">${f(timingSub)}</td></tr>
+      <tr class="total-row"><td colspan="3" class="text-right">合計（含稅 5%）</td><td class="text-right" style="color:#003CAA">${f(timingTotal)}</td></tr>
+    </tfoot>
+  </table>
+
+  <div class="two-col">
+    <div class="method-box">
+      <div class="method-header">方式一：實際收支結算</div>
+      <div class="method-body">
+        <div class="method-row"><span>選手繳費</span><span>${f(fin.actual_paid||0)}</span></div>
+        <div class="method-row sub"><span>− ATM 手續費</span><span>${fmtCell(m1_atm)}</span></div>
+        <div class="method-row sub"><span>− 超商手續費</span><span>${fmtCell(m1_cvs)}</span></div>
+        <div class="method-row sub"><span>− 信用卡手續費</span><span>${fmtCell(m1_cc)}</span></div>
+        ${isClientRefund ? '<div class="method-row sub"><span>+ 選手退費</span><span>'+f(m1_refund_val)+'</span></div>' : ''}
+        <div class="method-row sub"><span>− 晶片押金</span><span>${fmtCell(m1_chip)}</span></div>
+        <div class="method-row sub"><span>− 服務費</span><span>${fmtCell(-timingTotal)}</span></div>
+        ${prevTotal ? '<div class="method-row sub"><span>− 前次結算</span><span>'+fmtCell(m1_prev)+'</span></div>' : ''}
+        <div class="method-row total"><span>結算金額</span><span class="val">${f(m1_total)}</span></div>
+      </div>
+    </div>
+    <div class="method-box">
+      <div class="method-header">方式二：費用明細結算</div>
+      <div class="method-body">
+        <div class="method-row"><span>選手報名費</span><span>${f(regFee)}</span></div>
+        <div class="method-row sub"><span>+ 加價購</span><span>${f(addonFee)}</span></div>
+        <div class="method-row sub"><span>+ 郵寄費</span><span>${f(fin.postal||0)}</span></div>
+        <div class="method-row sub"><span>+ 溢繳金額</span><span>${f(m.overpaid)}</span></div>
+        ${m2_discount !== 0 ? '<div class="method-row sub"><span>'+(fin.discount_breakdown && Object.keys(fin.discount_breakdown).length===1 ? Object.keys(fin.discount_breakdown)[0] : '折扣優惠')+'</span><span>'+fmtCell(m2_discount)+'</span></div>' : ''}
+        ${isClientRefund ? '<div class="method-row sub"><span>+ 選手退費</span><span>'+f(m2_refund_val)+'</span></div>' : ''}
+        <div class="method-row sub"><span>− 信用卡手續費</span><span>${fmtCell(m2_cc)}</span></div>
+        <div class="method-row sub"><span>− 服務費</span><span>${fmtCell(-timingTotal)}</span></div>
+        ${prevTotal ? '<div class="method-row sub"><span>− 前次結算</span><span>'+fmtCell(m2_prev)+'</span></div>' : ''}
+        <div class="method-row total"><span>結算金額</span><span class="val">${f(m2_total)}</span></div>
+      </div>
+    </div>
+  </div>
+
+  ${resultHtml}
+
+  <div class="page-footer"><span>${eventName}</span><span>製表日期：${payDate}</span><span>${footerPageNum}</span></div>
+</div>`;
+
+  // ── 組裝完整 HTML ──
+  const bodyContent = isPayment ? page1Html + page2Html : page2Html;
+  const fullHtml = '<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">'
+    +'<title>'+docTitle+'</title>'
+    +'<style>'+cssBlock+'</style>'
+    +'</head><body>'+bodyContent
+    +'<script>window.onload=function(){setTimeout(function(){window.print()},300)};<\/script>'
+    +'</body></html>';
+
+  const printWin = window.open('', '_blank');
+  if (!printWin) { alert('請允許彈出視窗以匯出 PDF'); return; }
+  printWin.document.write(fullHtml);
+  printWin.document.close();
 }
 
 // ── Floating Tooltip ──
