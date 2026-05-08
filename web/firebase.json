@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "site": "h2u-settlement",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ]
+  }
+}
